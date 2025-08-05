@@ -3,10 +3,18 @@
   "version": "0.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prepare": "npx simple-git-hooks"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "simple-git-hooks": {
+    "commit-msg": "npx --no-install commitlint --edit \"$1\""
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "simple-git-hooks": "^2.13.1"
+  }
 }
