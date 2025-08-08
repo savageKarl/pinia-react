@@ -1,5 +1,12 @@
-import { reactive, toRefs, markRaw, computed, watch, type ComputedRef, ReactiveEffect } from '@vue/runtime-core'
-import { isFunction } from 'savage-types'
+import {
+  reactive,
+  toRefs,
+  markRaw,
+  computed,
+  watch,
+} from "@vue/runtime-core";
+import type { ComputedRef } from "@vue/runtime-core";
+import { isFunction } from "savage-types";
 
 import type {
   StateTree,
@@ -10,68 +17,70 @@ import type {
   StoreDefinition,
   _DeepPartial,
   _StoreWithState,
-  Fun
-} from './types'
-import { mergeReactiveObjects, setActiveEffect } from './utils'
-import { pinia } from './pinia'
-import { addSubscriptions, triggerSubscription } from './subscription'
-import React from 'react'
+} from "./types";
+import { mergeReactiveObjects } from "./utils";
+import { pinia } from "./pinia";
+import { addSubscriptions, triggerSubscription } from "./subscription";
+import React from "react";
 
 // don't collect effect when loading plugin
-let isLoadingPlugin = false
+let isLoadingPlugin = false;
 
 export function defineStore<
   Id extends string,
   S extends StateTree,
   G extends _GettersTree<S> = {},
   A extends _ActionsTree = {}
->(id: Id, options: DefineStoreOptions<Id, S, G, A>): StoreDefinition<Id, S, G, A> {
-  let isSyncListening = false
+>(
+  id: Id,
+  options: DefineStoreOptions<Id, S, G, A>
+): StoreDefinition<Id, S, G, A> {
+  let isSyncListening = false;
 
   function createStore() {
-    const { state, actions, getters } = options
-    const $state = reactive(state ? state() : {}) as S
+    const { state, actions, getters } = options;
+    const $state = reactive(state ? state() : {}) as S;
 
-    const initState = state ? state() : {}
+    const initState = state ? state() : {};
 
     const baseStore = {
       $id: id,
       $state,
       $patch(val: _DeepPartial<S> | ((arg: S) => unknown)) {
-        isSyncListening = false
+        isSyncListening = false;
         if (isFunction(val)) {
-          val($state as S)
+          val($state as S);
         } else {
-          mergeReactiveObjects($state as S, val)
+          mergeReactiveObjects($state as S, val);
         }
 
-        isSyncListening = true
-        triggerSubscription($state)
+        isSyncListening = true;
+        triggerSubscription($state);
       },
       $reset() {
         this.$patch((v) => {
-          Object.assign(v, initState)
-        })
+          Object.assign(v, initState);
+        });
       },
       $subscribe(cb: (newValue: S) => unknown) {
-        const remove = addSubscriptions(cb, () => unwatch())
+        const remove = addSubscriptions(cb, () => unwatch());
         const unwatch = watch(
           $state,
           (state) => {
             if (isSyncListening) {
-              cb(state)
+              cb(state);
             }
           },
           {
             deep: true,
-            flush: 'sync'
+            flush: "sync",
           }
-        )
-        return remove
-      }
-    } as _StoreWithState<Id, S, G, A>
+        );
+        return remove;
+      },
+    } as _StoreWithState<Id, S, G, A>;
 
-    pinia._state.set(id, $state)
+    pinia._state.set(id, $state);
 
     const store = reactive(
       Object.assign(
@@ -80,63 +89,69 @@ export function defineStore<
         Object.keys(actions ?? []).reduce(
           (x, y) =>
             Object.assign(x, {
-              [y]: (...args: any) => actions![y].call(store, ...args)
+              [y]: (...args: any) => actions![y].call(store, ...args),
             }),
           {} as A
         ),
-        Object.keys(getters || {}).reduce(
-          (computedGetters, name) => {
-            computedGetters[name] = markRaw(
-              computed(() => {
-                return getters?.[name].call(store, store)
-              })
-            )
-            return computedGetters
-          },
-          {} as Record<string, ComputedRef>
-        )
+        Object.keys(getters || {}).reduce((computedGetters, name) => {
+          computedGetters[name] = markRaw(
+            computed(() => {
+              return getters?.[name].call(store, store);
+            })
+          );
+          return computedGetters;
+        }, {} as Record<string, ComputedRef>)
       )
-    ) as unknown as Store<Id, S, G, A>
+    ) as unknown as Store<Id, S, G, A>;
 
-    const lastLoadingPlugin = isLoadingPlugin
-    isLoadingPlugin = true
+    const lastLoadingPlugin = isLoadingPlugin;
+    isLoadingPlugin = true;
     pinia._plugins.forEach((p) => {
       Object.assign(
         store,
         p({
           store,
           // @ts-ignore
-          options
+          options,
         }) || {}
-      )
-    })
-    isLoadingPlugin = lastLoadingPlugin
+      );
+    });
+    isLoadingPlugin = lastLoadingPlugin;
 
-    pinia._store.set(id, store)
+    pinia._store.set(id, store);
   }
 
-
-  let render: Fun
-  const cb = (fn: Fun) => {
-    render = fn
-
-    return () => { }
-  }
   function useStore() {
-    // todo 这里要修改
-    // if (!isLoadingPlugin) safeHookRun(() => (activeEffect.value = undefined))
-    if (!pinia._store.has(id)) createStore()
-    // if (!isLoadingPlugin) safeHookRun(() => setActiveEffect())
+    if (!pinia._store.has(id)) createStore();
+    const store = pinia._store.get(id) as Store<Id, S, G, A>;
     isSyncListening = true
-    const store = pinia._store.get(id) as Store<Id, S, G, A>
-    React.useSyncExternalStore(cb, () => store, () => store)
-    // 这里可能会有性能问题，要继续研究
-    const effect = new ReactiveEffect(render);
-    effect.run()
+    // 使用 useRef 缓存 store 的快照
+    // 初始快照是一个新对象，以避免在第一次渲染时出现引用问题
+    const storeSnapshotRef = React.useRef({ ...store });
 
-    return store
+    // 使用 React.useSyncExternalStore 来订阅 store 的变化
+    const snapshot = React.useSyncExternalStore(
+      (onStoreChange) => {
+        // 订阅 store 的变化
+        const remove = store.$subscribe(() => {
+          // 当 store 变化时，更新缓存的快照
+          storeSnapshotRef.current = { ...store };
+          // 然后通知 React 重新渲染
+          onStoreChange();
+        });
+        return remove;
+      },
+
+      // getSnapshot: 返回缓存的快照对象，确保引用稳定
+      () => storeSnapshotRef.current,
+
+      // getServerSnapshot
+      () => ({ ...store })
+    );
+
+    return snapshot;
   }
 
-  useStore.$id = id
-  return useStore
+  useStore.$id = id;
+  return useStore;
 }

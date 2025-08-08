@@ -1,5 +1,5 @@
-export { defineStore } from './defineStore'
-export { pinia as liberate, createPinia as createLiberate, setActivePinia as setActiveLiberate } from './pinia'
+export { defineStore } from "./defineStore";
+export { pinia, createPinia, setActivePinia } from "./pinia";
 
 export type {
   StateTree,
@@ -8,5 +8,5 @@ export type {
   PiniaPluginContext,
   PiniaPlugin,
   PiniaCustomProperties,
-  PiniaCustomStateProperties
-} from './types'
+  PiniaCustomStateProperties,
+} from "./types";
