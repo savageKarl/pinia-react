@@ -14,88 +14,54 @@ export type _StoreWithGetters<G> = {
   readonly [k in keyof G]: G[k] extends (...args: any[]) => infer R ? R : G[k]
 }
 
-export type _ActionsTree = Record<
-  string | number | symbol,
-  (...args: any[]) => any
->
+export type _ActionsTree = Record<string | number | symbol, (...args: any[]) => any>
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface LiberateCustomStateProperties<
-  S extends StateTree = StateTree
-> {}
+export type PiniaCustomStateProperties<S extends StateTree = StateTree> = {}
 
-export type _GettersTree<S extends StateTree> = Record<
-  string,
-  (state: S & LiberateCustomStateProperties<S>) => any
->
+export type _GettersTree<S extends StateTree> = Record<string, (state: S & PiniaCustomStateProperties<S>) => any>
 
 /**
  * Interface to be extended by the user when they add properties through plugins.
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface LiberateCustomProperties<
+export type PiniaCustomProperties<
   Id extends string = string,
   S extends StateTree = StateTree,
   G /* extends GettersTree<S> */ = _GettersTree<S>,
   A /* extends ActionsTree */ = _ActionsTree
-> {}
+> = {}
 
 export type _DeepPartial<T> = { [K in keyof T]?: _DeepPartial<T[K]> }
 
 export interface _StoreWithState<Id extends string, S extends StateTree, G, A> {
   $id: Id
-  $state: S & LiberateCustomStateProperties<S>
+  $state: S & PiniaCustomStateProperties<S>
   $patch(partialState: _DeepPartial<S>): void
-  $patch<F extends (state: S) => any>(
-    stateMutator: ReturnType<F> extends Promise<any> ? never : F
-  ): void
+  $patch<F extends (state: S) => any>(stateMutator: ReturnType<F> extends Promise<any> ? never : F): void
   $reset(): void
-  $subscribe(
-    callback: (newValue: S) => any,
-    options?: { detached: boolean }
-  ): any
+  $subscribe(callback: (newValue: S) => any, options?: { detached: boolean }): any
 }
 
-export type Store<
-  Id extends string,
-  S extends StateTree,
-  G,
-  A
-> = _StoreWithState<Id, S, G, A> &
+export type Store<Id extends string, S extends StateTree, G, A> = _StoreWithState<Id, S, G, A> &
   S &
   _StoreWithGetters<G> &
   (_ActionsTree extends A ? {} : A) &
-  LiberateCustomProperties<Id, S, G, A> &
-  LiberateCustomStateProperties<S>
+  PiniaCustomProperties<Id, S, G, A> &
+  PiniaCustomStateProperties<S>
 
-export type StoreGeneric = Store<
-  string,
-  StateTree,
-  _GettersTree<StateTree>,
-  _ActionsTree
->
+export type StoreGeneric = Store<string, StateTree, _GettersTree<StateTree>, _ActionsTree>
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface DefineStoreOptionsBase<S extends StateTree, Store> {}
+export type DefineStoreOptionsBase<S extends StateTree, Store> = {}
 
-export interface DefineStoreOptions<
-  Id extends string,
-  S extends StateTree,
-  G,
-  A
-> extends DefineStoreOptionsBase<S, Store<Id, S, G, A>> {
+export interface DefineStoreOptions<Id extends string, S extends StateTree, G, A>
+  extends DefineStoreOptionsBase<S, Store<Id, S, G, A>> {
   state?: () => S
 
-  getters?: G & ThisType<S & _StoreWithGetters<G> & LiberateCustomProperties>
+  getters?: G & ThisType<S & _StoreWithGetters<G> & PiniaCustomProperties>
 
-  actions?: A &
-    ThisType<
-      A &
-        S &
-        _StoreWithState<Id, S, G, A> &
-        _StoreWithGetters<G> &
-        LiberateCustomProperties
-    >
+  actions?: A & ThisType<A & S & _StoreWithState<Id, S, G, A> & _StoreWithGetters<G> & PiniaCustomProperties>
 }
 
 /**
@@ -120,7 +86,7 @@ export interface StoreDefinition<
 
 export type DepStack = Callback[]
 
-export type LiberatePluginContext<
+export type PiniaPluginContext<
   Id extends string = string,
   S extends StateTree = StateTree,
   G = _GettersTree<S>,
@@ -130,8 +96,4 @@ export type LiberatePluginContext<
   store: Store<Id, S, G, A>
 }
 
-export interface LiberatePlugin {
-  (
-    context: LiberatePluginContext
-  ): Partial<LiberateCustomProperties & LiberateCustomStateProperties> | void
-}
+export type PiniaPlugin = (context: PiniaPluginContext) => Partial<PiniaCustomProperties & PiniaCustomStateProperties> | void

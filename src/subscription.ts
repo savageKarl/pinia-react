@@ -3,10 +3,7 @@ import { noop } from './utils'
 
 const subscriptions: Set<Fun> = new Set()
 
-export function addSubscriptions<T extends Fun>(
-  callback: T,
-  onCleanup: () => void = noop
-) {
+export function addSubscriptions<T extends Fun>(callback: T, onCleanup: () => void = noop) {
   subscriptions.add(callback)
 
   const remove = () => {

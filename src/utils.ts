@@ -1,9 +1,5 @@
 import react from 'react'
-import {
-  isRef,
-  isReactive,
-  ReactiveEffect,
-} from '@vue/runtime-core'
+import { isRef, isReactive, ReactiveEffect } from '@vue/runtime-core'
 import { isObject, isArray, isUndefined } from 'savage-types'
 import { copyDeep } from 'savage-utils'
 
@@ -42,9 +38,7 @@ export function noop() {
   return {}
 }
 
-export function isPlainObject<S extends StateTree>(
-  value: S | unknown
-): value is S
+export function isPlainObject<S extends StateTree>(value: S | unknown): value is S
 export function isPlainObject(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   o: any
@@ -57,9 +51,10 @@ export function isPlainObject(
   )
 }
 
-export function mergeReactiveObjects<
-  T extends Record<any, unknown> | Map<unknown, unknown> | Set<unknown>
->(target: T, patchToApply: _DeepPartial<T>): T {
+export function mergeReactiveObjects<T extends Record<any, unknown> | Map<unknown, unknown> | Set<unknown>>(
+  target: T,
+  patchToApply: _DeepPartial<T>
+): T {
   // Handle Map instances
   if (target instanceof Map && patchToApply instanceof Map) {
     patchToApply.forEach((value, key) => target.set(key, value))
@@ -72,7 +67,7 @@ export function mergeReactiveObjects<
   // no need to go through symbols because they cannot be serialized anyway
   for (const key in patchToApply) {
     // eslint-disable-next-line no-prototype-builtins
-    if (!patchToApply.hasOwnProperty(key)) continue
+    if (!Object.hasOwn(patchToApply, key)) continue
     const subPatch = patchToApply[key]
     const targetValue = target[key]
     if (
@@ -102,10 +97,18 @@ export function useRender() {
 }
 
 type Func = () => void
-const effectMap = new WeakMap<Func, ReactiveEffect>()
 
 export function setActiveEffect() {
-  const render = useRender()
+  const fn = () => {}
+
+  const effect = new ReactiveEffect(fn);
+
+  effect.run() // 这一步是手动触发收集.,不过,在 react 里面,要再好好考虑,因为可能会导致渲染多次.后面仔细考虑
+  // 使用 useSyncExternalStore
+  // 现在作用收集变得简单了, 直接 new ReactiveEffect(fn),fn 就是数量变化会执行的辅作用函数 ,正常
+
+
+  // const render = useRender()
 
   // 这里收集作用的核心地方，要重写
   // let effect = effectMap.get(render)

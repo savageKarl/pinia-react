@@ -1,7 +1,5 @@
 export function App() {
   return (
-    <>
-      <div>h1S</div>
-    </>
-  );
+   <h1>hello, world!</h1>
+  )
 }

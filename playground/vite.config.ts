@@ -3,5 +3,5 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   root: './playground',
-  plugins: [react()],
+  plugins: [react()]
 })

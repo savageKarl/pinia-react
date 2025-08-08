@@ -1,12 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-types */
-import {
-  reactive,
-  toRefs,
-  markRaw,
-  computed,
-  watch,
-  type ComputedRef
-} from '@vue/runtime-core'
+import { reactive, toRefs, markRaw, computed, watch, type ComputedRef, ReactiveEffect } from '@vue/runtime-core'
 import { isFunction } from 'savage-types'
 
 import type {
@@ -17,12 +9,13 @@ import type {
   _ActionsTree,
   StoreDefinition,
   _DeepPartial,
-  _StoreWithState
+  _StoreWithState,
+  Fun
 } from './types'
 import { mergeReactiveObjects, setActiveEffect } from './utils'
-import { safeHookRun } from './apiEnv'
-import { liberate } from './liberate'
+import { pinia } from './pinia'
 import { addSubscriptions, triggerSubscription } from './subscription'
+import React from 'react'
 
 // don't collect effect when loading plugin
 let isLoadingPlugin = false
@@ -32,10 +25,7 @@ export function defineStore<
   S extends StateTree,
   G extends _GettersTree<S> = {},
   A extends _ActionsTree = {}
->(
-  id: Id,
-  options: DefineStoreOptions<Id, S, G, A>
-): StoreDefinition<Id, S, G, A> {
+>(id: Id, options: DefineStoreOptions<Id, S, G, A>): StoreDefinition<Id, S, G, A> {
   let isSyncListening = false
 
   function createStore() {
@@ -81,7 +71,7 @@ export function defineStore<
       }
     } as _StoreWithState<Id, S, G, A>
 
-    liberate._state.set(id, $state)
+    pinia._state.set(id, $state)
 
     const store = reactive(
       Object.assign(
@@ -90,9 +80,7 @@ export function defineStore<
         Object.keys(actions ?? []).reduce(
           (x, y) =>
             Object.assign(x, {
-              [y]: function (...args: any) {
-                return actions![y].call(store, ...args)
-              }
+              [y]: (...args: any) => actions![y].call(store, ...args)
             }),
           {} as A
         ),
@@ -112,7 +100,7 @@ export function defineStore<
 
     const lastLoadingPlugin = isLoadingPlugin
     isLoadingPlugin = true
-    liberate._plugins.forEach((p) => {
+    pinia._plugins.forEach((p) => {
       Object.assign(
         store,
         p({
@@ -124,17 +112,28 @@ export function defineStore<
     })
     isLoadingPlugin = lastLoadingPlugin
 
-    liberate._store.set(id, store)
+    pinia._store.set(id, store)
   }
 
+
+  let render: Fun
+  const cb = (fn: Fun) => {
+    render = fn
+
+    return () => { }
+  }
   function useStore() {
     // todo 这里要修改
     // if (!isLoadingPlugin) safeHookRun(() => (activeEffect.value = undefined))
-    if (!liberate._store.has(id)) createStore()
-    if (!isLoadingPlugin) safeHookRun(() => setActiveEffect())
-
+    if (!pinia._store.has(id)) createStore()
+    // if (!isLoadingPlugin) safeHookRun(() => setActiveEffect())
     isSyncListening = true
-    const store = liberate._store.get(id) as Store<Id, S, G, A>
+    const store = pinia._store.get(id) as Store<Id, S, G, A>
+    React.useSyncExternalStore(cb, () => store, () => store)
+    // 这里可能会有性能问题，要继续研究
+    const effect = new ReactiveEffect(render);
+    effect.run()
+
     return store
   }
 
