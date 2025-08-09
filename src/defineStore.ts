@@ -4,6 +4,7 @@ import {
   markRaw,
   computed,
   watch,
+  ReactiveEffect,
 } from "@vue/runtime-core";
 import type { ComputedRef } from "@vue/runtime-core";
 import { isFunction } from "savage-types";
@@ -21,7 +22,7 @@ import type {
 import { mergeReactiveObjects } from "./utils";
 import { pinia } from "./pinia";
 import { addSubscriptions, triggerSubscription } from "./subscription";
-import React from "react";
+import React, { useCallback, useId, useRef } from "react";
 
 // don't collect effect when loading plugin
 let isLoadingPlugin = false;
@@ -121,36 +122,51 @@ export function defineStore<
     pinia._store.set(id, store);
   }
 
+  type Fn = () => void
+  const effectMap = new WeakMap<string[], ReactiveEffect>()
+  const subscribeMap = new WeakMap<string[], Fn>()
+
   function useStore() {
     if (!pinia._store.has(id)) createStore();
     const store = pinia._store.get(id) as Store<Id, S, G, A>;
     isSyncListening = true
-    // 使用 useRef 缓存 store 的快照
-    // 初始快照是一个新对象，以避免在第一次渲染时出现引用问题
+
+    const _id = useRef([useId()])
     const storeSnapshotRef = React.useRef({ ...store });
 
-    // 使用 React.useSyncExternalStore 来订阅 store 的变化
+    const subscribe = useCallback((onStoreChange: () => void) => {
+      subscribeMap.set(_id.current, onStoreChange)
+      return () => {
+        subscribeMap.delete(_id.current)
+      }
+    }, [])
+
     const snapshot = React.useSyncExternalStore(
-      (onStoreChange) => {
-        // 订阅 store 的变化
-        const remove = store.$subscribe(() => {
-          // 当 store 变化时，更新缓存的快照
-          storeSnapshotRef.current = { ...store };
-          // 然后通知 React 重新渲染
-          onStoreChange();
-        });
-        return remove;
-      },
-
-      // getSnapshot: 返回缓存的快照对象，确保引用稳定
+      subscribe,
       () => storeSnapshotRef.current,
-
-      // getServerSnapshot
       () => ({ ...store })
     );
 
+    let effect = effectMap.get(_id.current)
+    if (!effect) {
+      const fn = () => {
+        // 这里有bug，依赖似乎没有收集到。
+        // 需要link本地的core进行断点调试啦，有点复杂。
+        // 主要是 状态改变了，但是这个回调函数竟然不执行，这才是问题
+        const onStoreChange = subscribeMap.get(_id.current)
+        onStoreChange?.()
+        // debugger
+      }
+      effect = new ReactiveEffect(fn)
+      effect.scheduler = fn
+      effect.run()
+      effectMap.set(_id.current, effect)
+    }
+
+
     return snapshot;
   }
+
 
   useStore.$id = id;
   return useStore;
