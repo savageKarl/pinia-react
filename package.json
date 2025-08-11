@@ -1,6 +1,6 @@
 {
   "name": "pinia-react",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "homepage": "https://github.com/savageKarl/pinia-react#readme",
   "bugs": {
@@ -60,7 +60,6 @@
     "@types/react-dom": "^19.1.4",
     "@vitejs/plugin-react": "^5.0.0",
     "jsdom": "^26.1.0",
-
     "semantic-release": "^24.2.7",
     "simple-git-hooks": "^2.13.1",
     "tsdown": "^0.13.3",
