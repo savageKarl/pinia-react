@@ -13,22 +13,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # semantic-release 需要完整的历史记录
+          fetch-depth: 0 
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # 确保使用支持的 Node.js 版本
-          cache: 'pnpm'
+          node-version: '20'
 
-      - name: Install pnpm
-        run: npm install -g pnpm
+      - name: Enable Corepack and Activate pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8 --activate
+          pnpm config set store-dir ~/.pnpm-store --global
+          pnpm config get store-dir
 
-      - name: Install dependencies
-        run: pnpm install
+      - name: Restore pnpm cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install Frontend Dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: pnpm build # 如果你的项目有构建步骤，确保执行
+        run: pnpm build 
 
       - name: Semantic Release
         env:
