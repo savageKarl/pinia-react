@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/savageKarl/pinia-react/compare/v1.0.0...v1.1.0) (2025-08-11)
+
+
+### Features
+
+* complete basic feature ([0c40e77](https://github.com/savageKarl/pinia-react/commit/0c40e77dc78cd3baf6fca903275442d76035ddcb))
+
 # 1.0.0 (2025-08-11)
 
 
