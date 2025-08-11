@@ -11,6 +11,12 @@ importers:
       '@maoism/runtime-core':
         specifier: ^3.4.13
         version: 3.4.13
+      react:
+        specifier: ^18.0.0 || ^19.0.0
+        version: 19.1.1
+      react-dom:
+        specifier: ^18.0.0 || ^19.0.0
+        version: 19.1.1(react@19.1.1)
       savage-types:
         specifier: ^1.0.20
         version: 1.0.20
@@ -57,12 +63,6 @@ importers:
       jsdom:
         specifier: ^26.1.0
         version: 26.1.0
-      react:
-        specifier: ^19.1.0
-        version: 19.1.1
-      react-dom:
-        specifier: ^19.1.0
-        version: 19.1.1(react@19.1.1)
       semantic-release:
         specifier: ^24.2.7
         version: 24.2.7(typescript@5.9.2)
