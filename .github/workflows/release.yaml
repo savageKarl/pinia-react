@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - dev
 
 jobs:
   release:
@@ -13,33 +14,43 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Enable Corepack and Activate pnpm
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+
+      - name: Configure pnpm
         run: |
-          corepack enable
-          corepack prepare pnpm@8 --activate
           pnpm config set store-dir ~/.pnpm-store --global
           pnpm config get store-dir
 
-      - name: Restore pnpm cache
-        uses: actions/cache/restore@v4
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
         with:
           path: ~/.pnpm-store
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
+      - name: Debug
+        run: |
+          ls -la
+          cat package.json
+          cat pnpm-lock.yaml || echo "pnpm-lock.yaml not found"
+          pnpm --version
+
       - name: Install Frontend Dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: pnpm build 
+        run: pnpm build
 
       - name: Semantic Release
         env:
