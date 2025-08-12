@@ -8,7 +8,7 @@ import {
   toRefs,
   watch
 } from '@maoism/runtime-core'
-import React, { useCallback, useId, useRef } from 'react'
+import { useCallback, useId, useRef, useSyncExternalStore } from 'react'
 import { isFunction } from 'savage-types'
 import { pinia } from './pinia'
 import { addSubscriptions, triggerSubscription } from './subscription'
@@ -134,7 +134,8 @@ export function defineStore<
     isSyncListening = true
 
     const _id = useRef([useId()])
-    const storeSnapshotRef = React.useRef({ ...store })
+    const storeSnapshotRef = useRef({ ...store })
+    const isCollectDep = useRef(false)
 
     const subscribe = useCallback((onStoreChange: () => void) => {
       subscribeMap.set(_id.current, onStoreChange)
@@ -147,7 +148,7 @@ export function defineStore<
       }
     }, [])
 
-    React.useSyncExternalStore(
+    useSyncExternalStore(
       subscribe,
       () => storeSnapshotRef.current,
       () => ({ ...store })
@@ -156,17 +157,20 @@ export function defineStore<
     let effect = effectMap.get(_id.current)
     if (!effect) {
       const fn = () => {
+        storeSnapshotRef.current = { ...store }
         const onStoreChange = subscribeMap.get(_id.current)
-        onStoreChange?.()
+        if (!isCollectDep.current) onStoreChange?.()
       }
 
       effect = new ReactiveEffect(fn, noop, () => {
-        storeSnapshotRef.current = { ...store }
         if (effect?.dirty) effect.run()
       })
       activeEffect.value = effect
+
+      isCollectDep.current = true
       effect.run()
       effectMap.set(_id.current, effect)
+      isCollectDep.current = false
     }
 
     return store
