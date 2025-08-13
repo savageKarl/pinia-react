@@ -37,7 +37,7 @@ describe('single component', () => {
   })
 })
 
-describe('mutiple component', () => {
+describe('multiple component', () => {
   const useA = defineStore('aStore', {
     state: () => ({ count: 0 })
   })

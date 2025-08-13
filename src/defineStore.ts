@@ -84,14 +84,15 @@ export function defineStore<
       Object.assign(
         baseStore,
         toRefs($state),
-        Object.keys(actions ?? []).reduce((x, y) => {
-          const key = y as keyof A
-          return Object.assign(x, {
-            [key]: function (this: Store<Id, S, G, A>, ...args: any[]) {
-              return (actions as any)[key].call(this, ...args)
-            }
-          })
-        }, {} as A),
+        Object.keys(actions ?? []).reduce(
+          (x, y) =>
+            Object.assign(x, {
+              [y]: function (...args: any) {
+                return actions![y].call(store, ...args)
+              }
+            }),
+          {} as A
+        ),
         Object.keys(getters || {}).reduce(
           (computedGetters, name) => {
             computedGetters[name] = markRaw(
@@ -157,16 +158,17 @@ export function defineStore<
     let effect = effectMap.get(_id.current)
     if (!effect) {
       const fn = () => {
-        storeSnapshotRef.current = { ...store }
         const onStoreChange = subscribeMap.get(_id.current)
-        if (!isCollectDep.current) onStoreChange?.()
+        if (!isCollectDep.current) {
+          storeSnapshotRef.current = { ...store }
+          onStoreChange?.()
+        }
       }
 
       effect = new ReactiveEffect(fn, noop, () => {
         if (effect?.dirty) effect.run()
       })
       activeEffect.value = effect
-
       isCollectDep.current = true
       effect.run()
       effectMap.set(_id.current, effect)
