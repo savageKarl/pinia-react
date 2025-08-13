@@ -179,5 +179,10 @@ export function defineStore<
   }
 
   useStore.$id = id
+  useStore.$getStore = () => {
+    if (!pinia._store.has(id)) createStore()
+    const store = pinia._store.get(id) as Store<Id, S, G, A>
+    return store
+  }
   return useStore
 }

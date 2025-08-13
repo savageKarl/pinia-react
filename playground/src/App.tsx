@@ -11,12 +11,18 @@ export const useCounterStore = defineStore('counter', {
   }
 })
 
+const increment = () => {
+  const store = useCounterStore.$getStore()
+  store.increment()
+}
+
+
 export function App() {
   const store = useCounterStore()
   return (
     <>
       <h1>{store.count}</h1>
-      <button onClick={() => store.increment()}>increate</button>
+      <button onClick={() => increment()}>increate</button>
     </>
   )
 }
