@@ -8,7 +8,7 @@ import {
   toRefs,
   watch
 } from '@maoism/runtime-core'
-import React, { useCallback, useId, useRef } from 'react'
+import { useCallback, useId, useRef, useSyncExternalStore } from 'react'
 import { isFunction } from 'savage-types'
 import { pinia } from './pinia'
 import { addSubscriptions, triggerSubscription } from './subscription'
@@ -84,14 +84,15 @@ export function defineStore<
       Object.assign(
         baseStore,
         toRefs($state),
-        Object.keys(actions ?? []).reduce((x, y) => {
-          const key = y as keyof A
-          return Object.assign(x, {
-            [key]: function (this: Store<Id, S, G, A>, ...args: any[]) {
-              return (actions as any)[key].call(this, ...args)
-            }
-          })
-        }, {} as A),
+        Object.keys(actions ?? []).reduce(
+          (x, y) =>
+            Object.assign(x, {
+              [y]: function (...args: any) {
+                return actions![y].call(store, ...args)
+              }
+            }),
+          {} as A
+        ),
         Object.keys(getters || {}).reduce(
           (computedGetters, name) => {
             computedGetters[name] = markRaw(
@@ -134,7 +135,8 @@ export function defineStore<
     isSyncListening = true
 
     const _id = useRef([useId()])
-    const storeSnapshotRef = React.useRef({ ...store })
+    const storeSnapshotRef = useRef({ ...store })
+    const isCollectDep = useRef(false)
 
     const subscribe = useCallback((onStoreChange: () => void) => {
       subscribeMap.set(_id.current, onStoreChange)
@@ -147,7 +149,7 @@ export function defineStore<
       }
     }, [])
 
-    React.useSyncExternalStore(
+    useSyncExternalStore(
       subscribe,
       () => storeSnapshotRef.current,
       () => ({ ...store })
@@ -157,16 +159,20 @@ export function defineStore<
     if (!effect) {
       const fn = () => {
         const onStoreChange = subscribeMap.get(_id.current)
-        onStoreChange?.()
+        if (!isCollectDep.current) {
+          storeSnapshotRef.current = { ...store }
+          onStoreChange?.()
+        }
       }
 
       effect = new ReactiveEffect(fn, noop, () => {
-        storeSnapshotRef.current = { ...store }
         if (effect?.dirty) effect.run()
       })
       activeEffect.value = effect
+      isCollectDep.current = true
       effect.run()
       effectMap.set(_id.current, effect)
+      isCollectDep.current = false
     }
 
     return store

@@ -13,7 +13,6 @@ export const useCounterStore = defineStore('counter', {
 
 export function App() {
   const store = useCounterStore()
-  console.log('number')
   return (
     <>
       <h1>{store.count}</h1>
