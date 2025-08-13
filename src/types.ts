@@ -79,6 +79,10 @@ export interface StoreDefinition<
    * Id of the store. Used by map helpers.
    */
   $id: Id
+  /**
+   * Return to store for use within non-functional components
+   */
+  $getStore: () => Store<Id, S, G, A>
 }
 
 export type DepStack = Callback[]
