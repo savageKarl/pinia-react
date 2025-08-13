@@ -1,3 +1,11 @@
+## [1.1.2](https://github.com/savageKarl/pinia-react/compare/v1.1.1...v1.1.2) (2025-08-13)
+
+
+### Bug Fixes
+
+* resolve render error ([60aa5c6](https://github.com/savageKarl/pinia-react/commit/60aa5c6481593d069c99c3cca42a0b7c5ec30d71))
+* resolve this error and render multiple ([08b1c85](https://github.com/savageKarl/pinia-react/commit/08b1c85152dba8e78efa97a1175add110036c11e))
+
 ## [1.1.1](https://github.com/savageKarl/pinia-react/compare/v1.1.0...v1.1.1) (2025-08-11)
 
 
