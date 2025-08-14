@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/savageKarl/pinia-react/compare/v1.2.0...v1.2.1) (2025-08-14)
+
+
+### Bug Fixes
+
+* resolve infinite loop in nextjs ([c77b064](https://github.com/savageKarl/pinia-react/commit/c77b064f78fb30177439c0f7672bb7e9aa16dfe3))
+
 # [1.2.0](https://github.com/savageKarl/pinia-react/compare/v1.1.2...v1.2.0) (2025-08-13)
 
 
