@@ -87,9 +87,7 @@ export function defineStore<
         Object.keys(actions ?? []).reduce(
           (x, y) =>
             Object.assign(x, {
-              [y]: function (...args: any) {
-                return actions![y].call(store, ...args)
-              }
+              [y]: (...args: any) => actions![y].call(store, ...args)
             }),
           {} as A
         ),
