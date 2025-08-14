@@ -4,7 +4,8 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { createPinia, defineStore, setActivePinia } from '../src'
 
 declare module '../src' {
-  export interface LiberateCustomProperties<Id> {
+  // biome-ignore lint/suspicious/noExportsInTest: <explanation>
+  export interface PiniaCustomProperties<Id> {
     pluginN: number
     uid: number
     hasApp: boolean
@@ -15,7 +16,7 @@ declare module '../src' {
     double: number
   }
 
-  export interface LiberateCustomStateProperties<S> {
+  export interface PiniaCustomStateProperties<S> {
     // pluginN: 'test' extends Id ? number : never | undefined
     pluginN: number
     shared: number
