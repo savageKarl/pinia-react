@@ -150,7 +150,7 @@ export function defineStore<
     useSyncExternalStore(
       subscribe,
       () => storeSnapshotRef.current,
-      () => ({ ...store })
+      () => storeSnapshotRef.current
     )
 
     let effect = effectMap.get(_id.current)
