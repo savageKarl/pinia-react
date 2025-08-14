@@ -1,4 +1,4 @@
-import { defineStore } from '../../src'
+import { defineStore } from '../../../src'
 
 export const useCounterStore = defineStore('counter', {
   state: () => {
@@ -15,7 +15,6 @@ const increment = () => {
   const store = useCounterStore.$getStore()
   store.increment()
 }
-
 
 export function App() {
   const store = useCounterStore()

@@ -87,9 +87,7 @@ export function defineStore<
         Object.keys(actions ?? []).reduce(
           (x, y) =>
             Object.assign(x, {
-              [y]: function (...args: any) {
-                return actions![y].call(store, ...args)
-              }
+              [y]: (...args: any) => actions![y].call(store, ...args)
             }),
           {} as A
         ),
@@ -152,7 +150,7 @@ export function defineStore<
     useSyncExternalStore(
       subscribe,
       () => storeSnapshotRef.current,
-      () => ({ ...store })
+      () => storeSnapshotRef.current
     )
 
     let effect = effectMap.get(_id.current)
