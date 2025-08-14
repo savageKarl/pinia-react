@@ -28,7 +28,8 @@
     "prepare": "npx simple-git-hooks",
     "build": "tsdown",
     "dev": "tsdown --watch",
-    "playground": "vite --config playground/vite.config.ts",
+    "playground-react": "vite --config playground/react/vite.config.ts",
+    "playground-nextjs": "pnpm next dev ./playground/nextjs",
     "test": "vitest",
     "semantic-release": "semantic-release",
     "format": "pnpm exec biome check --write"
@@ -61,7 +62,7 @@
     "@types/react-dom": "^19.1.4",
     "@vitejs/plugin-react": "^5.0.0",
     "jsdom": "^26.1.0",
-
+    "next": "^15.4.6",
     "semantic-release": "^24.2.7",
     "simple-git-hooks": "^2.13.1",
     "tsdown": "^0.13.3",
