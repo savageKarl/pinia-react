@@ -20,6 +20,7 @@ export function App() {
   const store = useCounterStore()
   return (
     <>
+      <h1>React</h1>
       <h1>{store.count}</h1>
       <button onClick={() => increment()}>increate</button>
     </>

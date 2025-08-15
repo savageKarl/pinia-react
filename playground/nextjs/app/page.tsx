@@ -20,9 +20,10 @@ const increment = () => {
 export default function Page() {
   const store = useCounterStore()
   return (
-    <>
-      <h1>{store.count}</h1>
+    <div id='app'>
+      <h1>NextJs</h1>
+      <h2>{store.count}</h2>
       <button onClick={() => increment()}>increate</button>
-    </>
+    </div>
   )
 }
