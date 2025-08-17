@@ -28,7 +28,7 @@
     "prepare": "npx simple-git-hooks",
     "build": "tsdown",
     "dev": "tsdown --watch",
-    "playground-react": "vite --config playground/react/vite.config.ts",
+    "playground-react": "vite playground/react",
     "playground-nextjs": "pnpm next dev ./playground/nextjs",
     "test": "vitest",
     "semantic-release": "semantic-release",
@@ -67,7 +67,7 @@
     "simple-git-hooks": "^2.13.1",
     "tsdown": "^0.13.3",
     "typescript": "^5.8.3",
-    "vite": "npm:rolldown-vite@latest",
+    "vite": "^7.1.2",
     "vitest": "^3.2.4"
   },
   "dependencies": {

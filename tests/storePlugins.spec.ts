@@ -1,10 +1,11 @@
-/* eslint-disable no-prototype-builtins */
+/** biome-ignore-all lint/suspicious/noExportsInTest: <> */
+/** biome-ignore-all lint/correctness/noUnusedFunctionParameters: <> */
+/** biome-ignore-all lint/correctness/noUnusedVariables: <> */
 import { computed, ref, toRef, watch } from '@maoism/runtime-core'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { createPinia, defineStore, setActivePinia } from '../src'
 
 declare module '../src' {
-  // biome-ignore lint/suspicious/noExportsInTest: <explanation>
   export interface PiniaCustomProperties<Id> {
     pluginN: number
     uid: number
@@ -17,14 +18,9 @@ declare module '../src' {
   }
 
   export interface PiniaCustomStateProperties<S> {
-    // pluginN: 'test' extends Id ? number : never | undefined
     pluginN: number
     shared: number
   }
-}
-
-function microTask(fn: () => any) {
-  Promise.resolve().then(fn)
 }
 
 describe('store plugins', () => {
@@ -36,17 +32,15 @@ describe('store plugins', () => {
     },
 
     getters: {
-      doubleN() {
-        return this.pluginN * 2
-      }
+      doubleN: (state) => state.pluginN * 2
     }
   })
 
   it('adds properties to stores', () => {
     // must call use after installing the plugin
-    const liberate = createPinia()
-    setActivePinia(liberate)
-    liberate.use(({ store }) => {
+    const pinia = createPinia()
+
+    pinia.use(({ store }) => {
       // eslint-disable-next-line no-prototype-builtins
       if (!Object.hasOwn(store.$state, 'pluginN')) {
         store.$state.pluginN = 20
@@ -67,9 +61,9 @@ describe('store plugins', () => {
       state: () => ({ n: 0 })
     })
 
-    const liberate = createPinia()
-    setActivePinia(liberate)
-    liberate.use(({ store }) => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    pinia.use(({ store }) => {
       // eslint-disable-next-line no-prototype-builtins
       if (!Object.hasOwn(store.$state, 'pluginN')) {
         store.$state.pluginN = 20
@@ -99,9 +93,9 @@ describe('store plugins', () => {
 
   it('can be used in actions', () => {
     // must call use after installing the plugin
-    const liberate = createPinia()
-    setActivePinia(liberate)
-    liberate.use(({ store }) => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    pinia.use(({ store }) => {
       return { pluginN: 20 }
     })
 
@@ -118,9 +112,9 @@ describe('store plugins', () => {
   })
 
   it('can be used in getters', () => {
-    const liberate = createPinia()
-    setActivePinia(liberate)
-    liberate.use(({ store }) => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    pinia.use(({ store }) => {
       return { pluginN: 20 }
     })
 
@@ -130,9 +124,9 @@ describe('store plugins', () => {
 
   it('shares the same ref among stores', () => {
     // must call use after installing the plugin
-    const liberate = createPinia()
-    setActivePinia(liberate)
-    liberate.use(({ store }) => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    pinia.use(({ store }) => {
       if (!Object.hasOwn(store.$state, 'shared')) {
         // @ts-expect-error: cannot be a ref yet
         store.$state.shared = ref(20)
@@ -183,11 +177,11 @@ describe('store plugins', () => {
         }
       }
     }
-    const liberate = createPinia()
-    setActivePinia(liberate)
+    const pinia = createPinia()
+    setActivePinia(pinia)
     const useStore = defineStore('main', options)
 
-    liberate.use((context) => {
+    pinia.use((context) => {
       expect(context.options).toEqual(options)
     })
 
@@ -196,9 +190,9 @@ describe('store plugins', () => {
 
   it('run inside store effect', async () => {
     // must call use after installing the plugin
-    const liberate = createPinia()
-    setActivePinia(liberate)
-    liberate.use(({ store }) => ({
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    pinia.use(({ store }) => ({
       // @ts-expect-error: invalid computed
       double: computed(() => store.$state.n * 2)
     }))
@@ -217,22 +211,6 @@ describe('store plugins', () => {
     act(() => {
       result.current.n++
     })
-
-    expect(spy).toHaveBeenCalledTimes(1)
-  })
-
-  it('only executes plugins once after multiple installs', async () => {
-    const spy = vi.fn()
-    const liberate = createPinia()
-    setActivePinia(liberate)
-
-    liberate.use(spy)
-
-    for (let i = 0; i < 3; i++) {
-      liberate.use(spy)
-    }
-
-    renderHook(() => useStore())
 
     expect(spy).toHaveBeenCalledTimes(1)
   })

@@ -40,10 +40,7 @@ export function noop() {
 }
 
 export function isPlainObject<S extends StateTree>(value: S | unknown): value is S
-export function isPlainObject(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  o: any
-): o is StateTree {
+export function isPlainObject(o: any): o is StateTree {
   return (
     o &&
     typeof o === 'object' &&

@@ -3,8 +3,9 @@ import { defineConfig } from 'tsdown'
 export default defineConfig([
   {
     entry: ['./src/index.ts'],
-    platform: 'neutral',
+    platform: 'browser',
     dts: true,
-    external: ['react', 'react-dom']
+    noExternal: ['@maoism/runtime-core', 'savage-types', 'savage-utils'],
+    minify: true
   }
 ])
