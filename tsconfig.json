@@ -14,9 +14,9 @@
     "emitDeclarationOnly": true,
     "esModuleInterop": true,
     "isolatedModules": true,
-    "verbatimModuleSyntax": true,
+    "verbatimModuleSyntax": false,
     "skipLibCheck": true
   },
-  "include": ["src", "tests"],
+  "include": ["src", "playground", "tests"],
   "exclude": ["node_modules", "dist"]
 }

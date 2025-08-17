@@ -55,6 +55,20 @@ describe('Actions', () => {
     }
   })
 
+  const useB = defineStore('B', { state: () => ({ b: 'b' }) })
+
+  const useA = defineStore('A', {
+    state: () => ({ a: 'a' }),
+    actions: {
+      swap() {
+        const bStore = useB.$getStore()
+        const b = bStore.$state.b
+        bStore.$state.b = this.$state.a
+        this.$state.a = b
+      }
+    }
+  })
+
   it('can use the store as this', () => {
     const { result } = renderHook(() => useStore())
     expect(result.current.a).toBe(true)
@@ -69,9 +83,10 @@ describe('Actions', () => {
   it('store is forced as the context', () => {
     const { result } = renderHook(() => useStore())
     expect(result.current.$state.a).toBe(true)
-    expect(() => {
+    act(() => {
+      // The `.call(null)` is what this test is proving works.
       result.current.toggle.call(null)
-    }).not.toThrow()
+    })
     expect(result.current.$state.a).toBe(false)
   })
 
@@ -86,6 +101,32 @@ describe('Actions', () => {
 
     expect(result.current.$state.a).toBe(false)
     expect(result.current.$state.nested.foo).toBe('bar')
+  })
+
+  it('supports being called between two applications', () => {
+    const pinia1 = createPinia()
+    const pinia2 = createPinia()
+
+    const { result: aResult } = renderHook(() => {
+      setActivePinia(pinia1)
+      return useA()
+    })
+    // // simulate a different application
+    const { result: bResult } = renderHook(() => {
+      setActivePinia(pinia2)
+      return useB()
+    })
+    const aStore = aResult.current
+    const bStore = bResult.current
+    act(() => {
+      bStore.$state.b = 'c'
+    })
+    act(() => {
+      aStore.swap()
+    })
+    expect(aStore.$state.a).toBe('b')
+    // a different instance of b store was used
+    expect(bStore.$state.b).toBe('c')
   })
 
   it('throws errors', () => {
@@ -111,20 +152,21 @@ describe('Actions', () => {
   it('can destructure actions', () => {
     const { result } = renderHook(() => useStore())
     const { simple } = result.current
-    expect(simple()).toBe('simple')
-    // works with the wrong this
-    expect({ simple }.simple()).toBe('simple')
-    // special this check
-    expect({ $id: 'o', simple }.simple()).toBe('simple')
-    // override the function like devtools do
-    expect(
-      {
-        $id: result.current.$id,
-        simple,
-        // otherwise it would fail
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        toggle() {}
-      }.simple()
-    ).toBe('simple')
+
+    act(() => {
+      expect(simple()).toBe('simple')
+      // works with the wrong this
+      expect({ simple }.simple()).toBe('simple')
+      // special this check
+      expect({ $id: 'o', simple }.simple()).toBe('simple')
+      // override the function like devtools do
+      expect(
+        {
+          $id: result.current.$id,
+          simple,
+          toggle() {}
+        }.simple()
+      ).toBe('simple')
+    })
   })
 })

@@ -1,19 +1,26 @@
-import type { Fun, StateTree } from './types'
-import { noop } from './utils'
+import type { _Method } from './types'
 
-const subscriptions: Set<Fun> = new Set()
+export const noop = () => {}
 
-export function addSubscriptions<T extends Fun>(callback: T, onCleanup: () => void = noop) {
+export function addSubscription<T extends _Method>(
+  subscriptions: Set<T>,
+  callback: T,
+  // biome-ignore lint/correctness/noUnusedFunctionParameters: <todo>
+  detached?: boolean,
+  onCleanup: () => void = noop
+) {
   subscriptions.add(callback)
 
-  const remove = () => {
+  const removeSubscription = () => {
     subscriptions.delete(callback)
     onCleanup()
   }
 
-  return remove
+  return removeSubscription
 }
 
-export function triggerSubscription(state: StateTree) {
-  subscriptions.forEach((callback) => callback(state))
+export function triggerSubscriptions<T extends _Method>(subscriptions: Set<T>, ...args: Parameters<T>) {
+  subscriptions.forEach((callback) => {
+    callback(...args)
+  })
 }
