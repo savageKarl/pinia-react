@@ -1,3 +1,11 @@
+## [1.3.1](https://github.com/savageKarl/pinia-react/compare/v1.3.0...v1.3.1) (2025-08-17)
+
+
+### Bug Fixes
+
+* external all deps ([c724a4b](https://github.com/savageKarl/pinia-react/commit/c724a4bb80bb15b1bba5f81166584d382abd457e))
+* remove comment ([8ce213d](https://github.com/savageKarl/pinia-react/commit/8ce213dfb60b531b588a152b917dd5a38437fe33))
+
 # [1.3.0](https://github.com/savageKarl/pinia-react/compare/v1.2.1...v1.3.0) (2025-08-17)
 
 
