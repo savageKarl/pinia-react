@@ -27,6 +27,13 @@ pnpm add pinia-react
 
 ## Basic Usage
 
+### Initialize
+
+```tsx
+import { createPinia } from 'pinia-react';
+const pinia = createPinia();
+```
+
 ### Creating and Using a Store
 
 ```tsx
