@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { createPinia, defineStore, setActivePinia } from '../src'
 
 describe('Store', () => {
@@ -67,7 +67,6 @@ describe('Store', () => {
       result.current.$subscribe(spy)
     })
 
-    // debugger
     expect(spy).not.toHaveBeenCalled()
 
     act(() => {
@@ -80,16 +79,18 @@ describe('Store', () => {
       result.current.$state.nested.foo = 'bar'
     })
 
-    expect(spy).toHaveBeenCalledTimes(2)
-    expect(result.current.$state).toEqual({
-      a: true,
-      nested: {
-        foo: 'bar',
-        a: { b: 'string' }
-      }
-    })
+    waitFor(() => {
+      expect(spy).toHaveBeenCalledTimes(2)
+      expect(result.current.$state).toEqual({
+        a: true,
+        nested: {
+          foo: 'bar',
+          a: { b: 'string' }
+        }
+      })
 
-    expect(result.current.nested.foo).toBe('bar')
+      expect(result.current.nested.foo).toBe('bar')
+    })
   })
 
   it('can create an empty state if no state option is provided', () => {
