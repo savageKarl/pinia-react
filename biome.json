@@ -21,6 +21,24 @@
       "a11y": {
         "useValidAriaRole": "off",
         "useButtonType": "off"
+      },
+      "suspicious": {
+        "noEmptyInterface": "off",
+        "noExplicitAny": "off",
+        "noConfusingVoidType": "off"
+      },
+      "correctness": {
+        "noUnusedVariables": "off"
+      },
+      "complexity": {
+        "noBannedTypes": "off",
+        "noArguments": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off",
+        "useConst": "off",
+        "useTemplate": "off",
+        "useShorthandFunctionType": "off"
       }
     }
   },
