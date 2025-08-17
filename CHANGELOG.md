@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/savageKarl/pinia-react/compare/v1.2.1...v1.3.0) (2025-08-17)
+
+
+### Features
+
+* rewrite everyting and support new feature ([91f85da](https://github.com/savageKarl/pinia-react/commit/91f85da603cf0065ade1894af411932d7f722b6d))
+
 ## [1.2.1](https://github.com/savageKarl/pinia-react/compare/v1.2.0...v1.2.1) (2025-08-14)
 
 
