@@ -15,7 +15,7 @@ import {
   type WatchOptions,
   watch
 } from '@maoism/runtime-core'
-import { useCallback, useId, useRef, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useId, useRef, useSyncExternalStore } from 'react'
 import { activePinia, type Pinia, setActivePinia } from './rootStore'
 import { addSubscription, triggerSubscriptions } from './subscription'
 import {
@@ -27,6 +27,7 @@ import {
   type DefineSetupStoreOptions,
   type DefineStoreOptions,
   type DefineStoreOptionsInPlugin,
+  type Fn,
   MutationType,
   type StateTree,
   type Store,
@@ -257,11 +258,11 @@ function createSetupStore<
     _p: pinia,
     // _s: scope,
     $id,
-    $onAction: addSubscription.bind(null, actionSubscriptions),
+    $onAction: addSubscription.bind(null, activeComponentCleanUp, actionSubscriptions),
     $patch,
     $reset,
     $subscribe(callback, options = {}) {
-      const removeSubscription = addSubscription(subscriptions, callback, options.detached, () => stopWatcher())
+      const removeSubscription = addSubscription([[]], subscriptions, callback, options.detached, () => stopWatcher())
       const stopWatcher = scope.run(() =>
         watch(
           () => pinia.state.value[$id] as UnwrapRef<S>,
@@ -360,6 +361,8 @@ export interface SetupStoreHelpers {
   action: <Fn extends _Method>(fn: Fn, name?: string) => Fn
 }
 
+const activeComponentCleanUp: [Fn[]] = [[]]
+
 /**
  * Creates a `useStore` function that retrieves the store instance
  *
@@ -373,9 +376,9 @@ export function defineStore<
   // cannot extends ActionsTree because we loose the typings
   A /* extends ActionsTree */ = {}
 >(id: Id, options: Omit<DefineStoreOptions<Id, S, G, A>, 'id'>): StoreDefinition<Id, S, G, A> {
-  type Fn = () => void
-  const effectMap = new WeakMap<string[], ReactiveEffect>()
-  const subscribeMap = new WeakMap<string[], Fn>()
+  const effectMap = new WeakMap<[string], ReactiveEffect>()
+  const subscribeMap = new WeakMap<[string], Fn>()
+  const cleanUpMap = new WeakMap<[string], Fn[]>()
 
   function useStore(pinia?: Pinia | null): Store<Id, S, G, A> {
     if (pinia) setActivePinia(pinia)
@@ -393,14 +396,28 @@ export function defineStore<
     activeEffect.value = lastEffect
 
     const store = pinia._s.get(id)!
-    const _id = useRef([useId()])
+    const _id = useRef<[string]>([useId()])
     const storeSnapshotRef = useRef({ ...store })
     const isCollectDep = useRef(false)
+
+    if (!cleanUpMap.get(_id.current)) {
+      cleanUpMap.set(_id.current, [])
+    }
+
+    activeComponentCleanUp[0] = cleanUpMap.get(_id.current)!
+
+    useEffect(() => {
+      activeComponentCleanUp[0] = cleanUpMap.get(_id.current)!
+      return () => {
+        cleanUpMap.get(_id.current)!.forEach((fn) => fn())
+      }
+    }, [])
 
     const subscribe = useCallback((onStoreChange: () => void) => {
       subscribeMap.set(_id.current, onStoreChange)
 
       return () => {
+        // 这里就要调用清除副作用的所有函数。
         const effect = effectMap.get(_id.current)
         if (effect) effect.stop()
         subscribeMap.delete(_id.current)
