@@ -1,3 +1,11 @@
+# [1.4.0](https://github.com/savageKarl/pinia-react/compare/v1.3.1...v1.4.0) (2025-08-20)
+
+
+### Features
+
+* support detached option for addSubscription ([f886ca2](https://github.com/savageKarl/pinia-react/commit/f886ca2b36d99d5d6496d119f6f41b3dd15d67d5))
+* update package.json and add error log ([5bf5def](https://github.com/savageKarl/pinia-react/commit/5bf5defb650ea18249cd0219b46d03d480622a96))
+
 ## [1.3.1](https://github.com/savageKarl/pinia-react/compare/v1.3.0...v1.3.1) (2025-08-17)
 
 
