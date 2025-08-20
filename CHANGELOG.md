@@ -1,3 +1,25 @@
+## [1.3.1](https://github.com/savageKarl/pinia-react/compare/v1.3.0...v1.3.1) (2025-08-17)
+
+
+### Bug Fixes
+
+* external all deps ([c724a4b](https://github.com/savageKarl/pinia-react/commit/c724a4bb80bb15b1bba5f81166584d382abd457e))
+* remove comment ([8ce213d](https://github.com/savageKarl/pinia-react/commit/8ce213dfb60b531b588a152b917dd5a38437fe33))
+
+# [1.3.0](https://github.com/savageKarl/pinia-react/compare/v1.2.1...v1.3.0) (2025-08-17)
+
+
+### Features
+
+* rewrite everyting and support new feature ([91f85da](https://github.com/savageKarl/pinia-react/commit/91f85da603cf0065ade1894af411932d7f722b6d))
+
+## [1.2.1](https://github.com/savageKarl/pinia-react/compare/v1.2.0...v1.2.1) (2025-08-14)
+
+
+### Bug Fixes
+
+* resolve infinite loop in nextjs ([c77b064](https://github.com/savageKarl/pinia-react/commit/c77b064f78fb30177439c0f7672bb7e9aa16dfe3))
+
 # [1.2.0](https://github.com/savageKarl/pinia-react/compare/v1.1.2...v1.2.0) (2025-08-13)
 
 
