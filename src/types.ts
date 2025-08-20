@@ -772,3 +772,5 @@ export type _Empty = {}
  * Utility type. For internal use **only**
  */
 export type _Simplify<T> = _Empty extends T ? _Empty : { [key in keyof T]: T[key] } & {}
+
+export type Fn = () => void
