@@ -43,7 +43,10 @@
     "react-store",
     "redux",
     "zustand",
-    "store"
+    "store",
+    "pinia",
+    "vue",
+    "state-management"
   ],
   "license": "MIT",
   "simple-git-hooks": {
