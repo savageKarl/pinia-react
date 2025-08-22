@@ -1,11 +1,11 @@
-import type { _Method } from './types'
+import type { _Method, Fn } from './types'
 
 export const noop = () => {}
 
 export function addSubscription<T extends _Method>(
+  activeComponentCleanUp: [Fn[]],
   subscriptions: Set<T>,
   callback: T,
-  // biome-ignore lint/correctness/noUnusedFunctionParameters: <todo>
   detached?: boolean,
   onCleanup: () => void = noop
 ) {
@@ -14,6 +14,10 @@ export function addSubscription<T extends _Method>(
   const removeSubscription = () => {
     subscriptions.delete(callback)
     onCleanup()
+  }
+
+  if (!detached) {
+    activeComponentCleanUp[0].push(removeSubscription)
   }
 
   return removeSubscription
