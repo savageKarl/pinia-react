@@ -1,0 +1,32 @@
+[
+  {
+    "type": "file",
+    "name": "store",
+    "label": "Defining a Store"
+  },
+  {
+    "type": "file",
+    "name": "state",
+    "label": "State"
+  },
+  {
+    "type": "file",
+    "name": "getters",
+    "label": "Getter"
+  },
+  {
+    "type": "file",
+    "name": "actions",
+    "label": "Action"
+  },
+  {
+    "type": "file",
+    "name": "plugins",
+    "label": "Plugins"
+  },
+  {
+    "type": "file",
+    "name": "outside-component-usage",
+    "label": "Stores outside of components"
+  }
+]
