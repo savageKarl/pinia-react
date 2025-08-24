@@ -4,7 +4,6 @@ export default defineConfig([
   {
     entry: ['./src/index.ts'],
     platform: 'browser',
-    dts: true,
-    minify: true
+    dts: true
   }
 ])

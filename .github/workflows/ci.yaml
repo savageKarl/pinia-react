@@ -1,13 +1,13 @@
-name: Release
+name: CI
 
 on:
-  push:
+  pull_request:
     branches:
       - main
       - dev
 
 jobs:
-  release:
+  ci:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -58,8 +58,3 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Semantic Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm --filter pinia-react semantic-release

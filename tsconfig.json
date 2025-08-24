@@ -15,8 +15,12 @@
     "esModuleInterop": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": false,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "pinia-react": ["packages/pinia/src"]
+    }
   },
-  "include": ["src", "playground", "tests"],
+  "include": ["packages"],
   "exclude": ["node_modules", "dist"]
 }

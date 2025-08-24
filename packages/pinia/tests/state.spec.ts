@@ -1,6 +1,6 @@
 import { computed, ref, watch } from '@maoism/runtime-core'
 import { act, renderHook } from '@testing-library/react'
-import { createPinia, defineStore, setActivePinia } from '../src'
+import { createPinia, defineStore, setActivePinia } from 'pinia-react'
 
 describe('state', () => {
   beforeEach(() => {

@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { createPinia, defineStore, setActivePinia } from '../src'
+import { createPinia, defineStore, setActivePinia } from 'pinia-react'
 
 describe('$store.patch', () => {
   beforeEach(() => {

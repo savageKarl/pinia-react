@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/suspicious/noDuplicateTestHooks: <> */
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { createPinia, defineStore, setActivePinia } from '../src'
+import { createPinia, defineStore, setActivePinia } from 'pinia-react'
 
 describe('Subscriptions', () => {
   // Define the useStore function, consistent with the original code

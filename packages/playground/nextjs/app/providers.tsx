@@ -1,6 +1,6 @@
 'use client'
 
-import { createPinia } from '../../../src'
+import { createPinia } from 'pinia-react'
 
 const pinia = createPinia()
 

@@ -1,0 +1,55 @@
+{
+  "name": "pinia-react",
+  "version": "1.1.0",
+  "description": "Intuitive, type safe and flexible Store for React",
+  "packageManager": "pnpm@10.14.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://github.com/savageKarl/pinia-react#readme",
+  "bugs": {
+    "url": "https://github.com/savageKarl/pinia-react/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/savageKarl/pinia-react.git"
+  },
+  "author": "savageKarl <shan.revolt@gmail.com>",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "playground-react": "vite playground/react",
+    "playground-nextjs": "pnpm next dev ./playground/nextjs",
+    "test": "vitest",
+    "semantic-release": "semantic-release",
+    "format": "pnpm exec biome check --write"
+  },
+  "keywords": [
+    "react",
+    "pinia-react",
+    "react-pinia",
+    "react-store",
+    "redux",
+    "zustand",
+    "store",
+    "pinia",
+    "vue",
+    "state-management"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  }
+}

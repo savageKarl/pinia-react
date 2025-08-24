@@ -1,9 +1,14 @@
 {
-  "branches": ["main"],
+  "branches": ["main", { "name": "dev", "prerelease": "beta" }],
   "plugins": [
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
-    "@semantic-release/changelog",
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md"
+      }
+    ],
     [
       "@semantic-release/npm",
       {
@@ -14,7 +19,7 @@
     [
       "@semantic-release/git",
       {
-        "assets": ["package.json", "pnpm-lock.yaml", "CHANGELOG.md"],
+        "assets": ["package.json", "CHANGELOG.md", "../../pnpm-lock.yaml"],
         "message": "chore(release): ${nextRelease.version} [skip ci]\n\nSee CHANGELOG.md for details"
       }
     ],

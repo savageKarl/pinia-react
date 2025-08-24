@@ -1,6 +1,5 @@
-'use client'
-import { defineStore } from '../../../src'
-import './style.css'
+import { defineStore } from 'pinia-react'
+
 export const useCounterStore = defineStore('counter', {
   state: () => {
     return { count: 0 }
@@ -19,17 +18,17 @@ export const useCounterStore = defineStore('counter', {
 
 const increment = () => {
   const store = useCounterStore.$getStore()
-  store.increment()
+  store.increment.call(null)
 }
 
-export default function Page() {
+export function App() {
   const store = useCounterStore()
   return (
-    <div id='app'>
-      <h1>NextJs</h1>
+    <>
+      <h1>React</h1>
       <h2>count: {store.count}</h2>
       <h3>doubleCount: {store.doubleCount}</h3>
       <button onClick={() => increment()}>increate</button>
-    </div>
+    </>
   )
 }
