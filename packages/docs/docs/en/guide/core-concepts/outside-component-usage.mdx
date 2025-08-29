@@ -1,0 +1,44 @@
+import { PackageManagerTabs, Tab, Tabs } from '@theme';
+
+# Using Store Outside Components
+
+Pinia stores rely on a pinia instance to share the same store instance across all calls. Most of the time, you can simply call the useStore() function you defined and it works out of the box - you always need to install pinia in your entry file:
+
+
+<Tab label="JSX">
+
+```tsx title="src/index.jsx"
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { App } from './App'
+import './style.css'
+import { createPinia } from 'pinia-react'
+
+// You need to install pinia in your entry file, this is important
+createPinia()
+
+createRoot(document.querySelector('#app')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+)
+
+```
+</Tab>
+
+<Tab label="JSX">
+
+```tsx title="src/auth.js"
+import { useAuthStore } from './auth-store'
+
+async function auth() {
+  if (xxx) {
+    // To get the store outside of a component, you need to call $getStore, because defineStore returns a hook
+    const store = useAuthStore.$getStore()
+  }
+}
+
+```
+</Tab>
+
+

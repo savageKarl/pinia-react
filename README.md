@@ -1,46 +1,50 @@
-
-# React Pinia
-
-Pinia-react is a state management library for React inspired by Vue's Pinia, bringing a clean, reactive, and TypeScript-friendly state management experience.
+# pinia-react
 
 [](https://www.npmjs.com/package/pinia-react)
-[](https://github.com/your-username/pinia-react/blob/main/LICENSE)
+[](https://github.com/savageKarl/pinia-react/blob/main/LICENSE)
 
-## Motivation
+`pinia-react` is a state management library for React, inspired by Vue's Pinia. It is built upon Pinia's core logic and integrates seamlessly with React Hooks and `useSyncExternalStore` to deliver a concise, reactive, and TypeScript-friendly state management experience.
 
-The React ecosystem has a variety of state management tools, but they can often be overly complex or lack structure. Inspired by Pinia's modular design and elegant API, pinia-react combines React Hooks with the Pinia philosophy to provide a lightweight, intuitive, and TypeScript-friendly state management solution suitable for modern React applications.
+For more details, please refer to the [pinia-react documentation](https://savagekarl.github.io/pinia-react).
 
-## Features
+## Overview
 
-  - 🔄 **Powerful Reactivity** - Based on the Vue 3 reactivity system, it automatically tracks dependencies and efficiently updates components.
-  - ⚡️ **Reactive** - Built on `useSyncExternalStore`, it perfectly adapts to React rendering.
-  - 🛠 **Modular** - Independent stores that support dynamic loading.
-  - 🔍 **TypeScript Friendly** - Automatic type inference with zero configuration.
-  - 🧩 **Plugin System** - Flexible extensions for features like persistence and logging.
-  - 🔀 **Familiar API** - The API design is fully inspired by Pinia, making it friendly for Vue developers.
+### Motivation
 
-## Installation
+Pinia is a highly acclaimed state management library in the Vue ecosystem, celebrated for its modular design and elegant API. `pinia-react` brings Pinia's core philosophy and parts of its implementation to the React ecosystem. By combining it with React Hooks and `useSyncExternalStore`, it offers a lightweight, intuitive, and TypeScript-friendly solution, especially suited for modern React projects that require reactive state management.
+
+### Features
+
+  - 🔄 **Pinia-Style Reactivity**: Built on Pinia's reactive core (from Vue 3's reactivity system), it automatically tracks state dependencies and updates only the necessary components.
+  - ⚡️ **React Concurrent Rendering Support**: Ensures seamless compatibility with React 18's concurrent features through the use of `useSyncExternalStore`.
+  - 🛠 **Modular Stores**: Adopts Pinia's modular design, supporting dynamic store registration, making it ideal for large-scale applications.
+  - 🔍 **TypeScript Friendly**: Provides excellent type inference out-of-the-box, ensuring full type safety without extra configuration.
+  - 🧩 **Plugin System**: Supports extensions like state persistence and logging, allowing for easy customization of store behavior.
+  - 🔀 **Pinia API Compatibility**: Utilizes Pinia's API design, enabling a smooth transition for Vue developers and an easy learning curve for React developers.
+
+## Quick Start
+
+### Requirements
+
+  - React 18+
+  - ES6+
+
+### Installation
 
 ```bash
 pnpm add pinia-react
 ```
 
-## Basic Usage
-
-### Initialize
+### Usage Example
 
 ```tsx
-import { createPinia } from 'pinia-react';
-const pinia = createPinia();
-```
-
-### Creating and Using a Store
-
-```tsx
-import { defineStore } from 'pinia-react'
+import { createPinia, defineStore } from 'pinia-react'
 import { useEffect } from 'react'
 
-// Define a store (API is identical to Pinia)
+// Initialize Pinia (API is identical to Pinia)
+const pinia = createPinia();
+
+// Define a store (using Pinia's defineStore API)
 const useCounterStore = defineStore('counter', {
   // Define the initial state
   state: () => ({
@@ -48,34 +52,34 @@ const useCounterStore = defineStore('counter', {
     name: 'Counter'
   }),
   
-  // Define getter methods (similar to computed properties)
+  // Define getters
   getters: {
     doubleCount() {
-      return this.count * 2
+      return this.count * 2 // A Pinia-style getter
     }
   },
   
-  // Define action methods
+  // Define actions
   actions: {
     increment() {
       this.count++
     },
     
     async fetchSomething() {
-      // Supports asynchronous operations
+      // Asynchronous operations are supported
       const result = await api.get('/data')
       this.count = result.count
     }
   }
 })
 
-// Use in a component
+// Use the store in a component
 function Counter() {
   // Get the store instance
   const store = useCounterStore()
   
   useEffect(() => {
-    // You can call an action method
+    // You can call actions
     store.fetchSomething()
   }, [])
   
@@ -89,86 +93,22 @@ function Counter() {
 }
 ```
 
-### Interacting Between Multiple Stores
+For more advanced usage, such as plugins or using the store outside of components, please see the [documentation](https://savagekarl.github.io/pinia-react).
 
-```tsx
-import { defineStore } from 'pinia-react'
+## FAQ
 
-// User Store
-const useUserStore = defineStore('user', {
-  state: () => ({
-    name: 'Anonymous',
-    isAdmin: false
-  }),
-  actions: {
-    login(name, admin = false) {
-      this.name = name
-      this.isAdmin = admin
-    },
-    logout() {
-      this.name = 'Anonymous'
-      this.isAdmin = false
-    }
-  }
-})
+### What is the relationship between `pinia-react` and Pinia?
 
-// Cart Store, which depends on the User Store
-const useCartStore = defineStore('cart', {
-  state: () => ({
-    items: []
-  }),
-  getters: {
-    isEmpty() {
-      return this.items.length === 0
-    },
-    // Can use other stores
-    isCheckoutAllowed() {
-      const userStore = useUserStore.$getStore()
-      return this.items.length > 0 && userStore.name !== 'Anonymous'
-    }
-  },
-  actions: {
-    addItem(item) {
-      this.items.push(item)
-    },
-    checkout() {
-      const userStore = useUserStore.$getStore()
-      if (userStore.name === 'Anonymous') {
-        throw new Error('Login required')
-      }
-      // Handle checkout logic...
-      this.items = []
-    }
-  }
-})
-```
+`pinia-react` is an adaptation of Pinia for React. It is built upon parts of Pinia's core source code and has been optimized for the React ecosystem (for example, by using `useSyncExternalStore` to support concurrent rendering in React 18). We strictly adhere to Pinia's MIT License and have preserved the original author's copyright information in our license file.
 
-### Plugin System
+### What are the advantages of `pinia-react` compared to Zustand or Redux?
 
-Pinia-react supports extending functionality through plugins.
+`pinia-react` combines Pinia's modular architecture with React's Hooks API, offering a more streamlined API and superior TypeScript support. It is an excellent choice for modern React applications that benefit from a reactive state management paradigm.
 
-```ts
-import { createpinia } from 'pinia-react'
+## Acknowledgements
 
-// Create a pinia instance
-const pinia = createpinia()
-
-// Use a plugin
-pinia.use(myPlugin)
-
-
-// Plugin example
-function myPlugin({ store, options }) {
-  // Add custom properties or methods to the store
-  return {
-    customProperty: 'value',
-    customMethod() {
-      // Custom logic
-    }
-  }
-}
-```
+`pinia-react` is based on parts of the source code from [Pinia](https://github.com/vuejs/pinia), adapted and optimized for the React ecosystem. In compliance with the MIT License, we have retained the copyright notice of Pinia's original author and extend our sincere gratitude to the Pinia project and its creator. This project also draws inspiration from the design philosophy of [Zustand](https://github.com/pmndrs/zustand).
 
 ## License
 
-MIT
+This project is licensed under the [MIT License](https://github.com/savageKarl/pinia-react/blob/main/LICENSE). As `pinia-react` is derived from parts of Pinia's source code, it strictly complies with its MIT License requirements and preserves the original author's copyright information. Please see the license file for more details.

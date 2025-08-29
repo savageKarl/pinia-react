@@ -1,0 +1,44 @@
+import { PackageManagerTabs, Tab, Tabs } from '@theme';
+
+# 组件外使用store
+
+Pinia store 依靠 pinia 实例在所有调用中共享同一个 store 实例。大多数时候，只需调用你定义的 useStore() 函数，完全开箱即用，你总是要在入口文件安装 pinia 的：
+
+
+<Tab label="JSX">
+
+```tsx title="src/index.jsx"
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { App } from './App'
+import './style.css'
+import { createPinia } from 'pinia-react'
+
+// 需要在入口文件安装 pinia，这很重要
+createPinia()
+
+createRoot(document.querySelector('#app')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+)
+
+```
+</Tab>
+
+<Tab label="JSX">
+
+```tsx title="src/auth.js"
+import { useAuthStore } from './auth-store'
+
+async function auth() {
+  if (xxx) {
+    // 在组件外获取 store 需要调用 $getStore，因为 defineStore  返回的是 hook
+    const store = useAuthStore.$getStore()
+  }
+}
+
+```
+</Tab>
+
+
