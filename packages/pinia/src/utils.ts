@@ -23,10 +23,10 @@ export function reactiveMerge<T extends object>(x: T, y: T, clear = false) {
       reactiveMerge(xValue, yValue, clear)
     } else if (isArray(yValue)) {
       if (isUndefined(xValue)) x[k] = [] as T[Extract<keyof T, string>]
-      // @ts-ignore
+      // @ts-expect-error
       x[k].length = yValue.length
       yValue.forEach((_, k2) => {
-        // @ts-ignore
+        // @ts-expect-error
         x[k][k2] = yValue[k2]
       })
     } else {
@@ -76,7 +76,6 @@ export function mergeReactiveObjects<T extends Record<any, unknown> | Map<unknow
       !isRef(subPatch) &&
       !isReactive(subPatch)
     ) {
-      // @ts-ignore
       target[key] = mergeReactiveObjects(targetValue, subPatch)
     } else {
       // @ts-expect-error: subPatch is a valid value
