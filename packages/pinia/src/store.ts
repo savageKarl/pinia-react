@@ -419,6 +419,7 @@ export function defineStore<
       subscribeMap.set(_id.current, onStoreChange)
 
       return () => {
+        // 这里就要调用清除副作用的所有函数。
         const effect = effectMap.get(_id.current)
         if (effect) effect.stop()
         subscribeMap.delete(_id.current)
