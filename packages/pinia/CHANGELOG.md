@@ -1,3 +1,11 @@
+# [1.5.0](https://github.com/savageKarl/pinia-react/compare/v1.4.0...v1.5.0) (2025-08-29)
+
+
+### Features
+
+* add docs ([c656c73](https://github.com/savageKarl/pinia-react/commit/c656c730acdd055e4f37d50e138389a818e2b3eb))
+* support detached option for addSubscription ([0ed69e2](https://github.com/savageKarl/pinia-react/commit/0ed69e2a89c2c4ed5f29b63fb2f769539e473ee5))
+
 # [1.5.0-beta.1](https://github.com/savageKarl/pinia-react/compare/v1.4.0...v1.5.0-beta.1) (2025-08-29)
 
 
