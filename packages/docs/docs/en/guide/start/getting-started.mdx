@@ -1,0 +1,75 @@
+import { PackageManagerTabs, Tab, Tabs } from '@theme';
+
+# Quick Start
+
+## Requirements
+
+- ES6+
+- React18+ 
+
+## Installation
+
+Install pinia-react with your preferred package manager:
+
+<PackageManagerTabs command="install pinia-react" />
+
+Create a pinia instance
+
+<Tabs>
+  <Tab label="TSX">
+
+```tsx title="src/index.tsx"
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { App } from './App'
+import './style.css'
+import { createPinia } from 'pinia-react'
+
+createPinia()
+
+createRoot(document.querySelector('#app')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+)
+
+```
+
+  </Tab>
+  <Tab label="JSX">
+
+```tsx title="src/index.jsx"
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { App } from './App'
+import './style.css'
+import { createPinia } from 'pinia-react'
+
+createPinia()
+
+createRoot(document.querySelector('#app')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+)
+
+```
+  </Tab>
+</Tabs>
+
+## What is a Store?
+
+A Store is a container that encapsulates the global state (State), business logic for modifying the state (Actions), and readable data derived from the state (Getters) in an application. It allows any component in the application to access and modify shared data, thereby achieving cross-component communication and state synchronization.
+
+* **Single Source of Truth:** The Store centralizes all shared states in one place, avoiding data dispersion and confusion, making the application state predictable and easy to track.
+* **Decoupling:** The Store separates state management from components. Components only need to care about how to use and display data, not where the data comes from or how to modify it, which greatly reduces the coupling between components.
+* **Testability:** Centralized state management and logic make writing unit tests simpler because you can test the Store's behavior without rendering components.
+
+
+## When Should You Use a Store?
+
+A store should contain data that can be accessed by the entire application, such as themes, user login status, etc. Or if you have a complex interactive page with multiple components, each having its own state, this scenario can be considered for using a store to manage state and business logic to improve efficiency.
+
+## When Should You NOT Use a Store?
+
+If the state is only used in the current page or component, and there is no need for communication or dependency, there is no need to create and manage a separate store.
