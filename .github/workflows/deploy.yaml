@@ -2,7 +2,11 @@ name: Deploy Rspress site to Pages
 
 on:
   push:
-    branches: [docs]
+    branches:
+      - main
+      - docs
+    paths:
+      - 'packages/docs/**'
 
   workflow_dispatch:
 
