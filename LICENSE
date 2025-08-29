@@ -1,7 +1,8 @@
 The MIT License (MIT)
 
 Copyright (c) 2025 karl
-Copyright (c) 2019-present Eduardo San Martin Morote
+
+Portions of this software are based on Pinia, Copyright (c) Eduardo San Martin Morote
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

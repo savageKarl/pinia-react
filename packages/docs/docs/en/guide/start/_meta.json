@@ -1,0 +1,12 @@
+[
+  {
+    "type": "file",
+    "name": "introduction",
+    "label": "What is Pinia-React?"
+  },
+  {
+    "type": "file",
+    "name": "getting-started",
+    "label": "Getting Started"
+  }
+]

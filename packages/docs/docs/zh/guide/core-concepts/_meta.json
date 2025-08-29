@@ -1,0 +1,32 @@
+[
+  {
+    "type": "file",
+    "name": "store",
+    "label": "定义Store"
+  },
+  {
+    "type": "file",
+    "name": "state",
+    "label": "State"
+  },
+  {
+    "type": "file",
+    "name": "getters",
+    "label": "Getter"
+  },
+  {
+    "type": "file",
+    "name": "actions",
+    "label": "Action"
+  },
+  {
+    "type": "file",
+    "name": "plugins",
+    "label": "插件"
+  },
+  {
+    "type": "file",
+    "name": "outside-component-usage",
+    "label": "组件外的store"
+  }
+]
