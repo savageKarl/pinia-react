@@ -10,10 +10,10 @@ hero:
   actions:
     - theme: brand
       text: 介绍
-      link: /zh/guide/start/introduction
+      link: guide/start/introduction
     - theme: alt
       text: 快速开始
-      link: /zh/guide/start/getting-started
+      link: guide/start/getting-started
   image:
     src: /rspress-icon.png
     alt: Logo
