@@ -9,6 +9,7 @@
     "playground-react": "pnpm --filter playground-react dev",
     "playground-nextjs": "pnpm --filter playground-nextjs dev",
     "test": "vitest run",
+    "test-dts": "pnpm --filter pinia-react test-dts",
     "check": "pnpm exec biome check",
     "format": "pnpm exec biome check --write",
     "docs-dev": "pnpm --filter docs dev",
