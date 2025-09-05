@@ -53,7 +53,7 @@ jobs:
 
 
       - name: Run Lint & Format & Test Check
-        run: pnpm run-p check test
+        run: pnpm run-p check test test-dts
 
       - name: Build
         run: pnpm build
