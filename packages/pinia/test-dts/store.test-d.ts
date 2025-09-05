@@ -1,8 +1,5 @@
-import {
-  defineStore,
-  expectType,
-} from '.'
-import { UnwrapRef } from '@maoism/runtime-core'
+import type { UnwrapRef } from '@maoism/runtime-core'
+import { defineStore, expectType } from '.'
 
 const useStore = defineStore('name', {
   state: () => ({ a: 'on' as 'on' | 'off', nested: { counter: 0 } }),
@@ -23,7 +20,7 @@ const useStore = defineStore('name', {
     doubleCounter: (state) => {
       expectType<number>(state.nested.counter)
       return state.nested.counter * 2
-    },
+    }
   },
   actions: {
     doStuff() {
@@ -34,15 +31,15 @@ const useStore = defineStore('name', {
     },
     otherOne() {
       expectType<() => void>(this.doStuff)
-    },
-  },
+    }
+  }
 })
 
 defineStore('name', {})
 // @ts-expect-error
 defineStore('name')
 defineStore('name', {
-  state: () => ({}),
+  state: () => ({})
 })
 
 // actions on not existing properties
@@ -51,8 +48,8 @@ defineStore('', {
     a() {
       // @ts-expect-error
       this.notExisting
-    },
-  },
+    }
+  }
 })
 
 defineStore('', {
@@ -61,8 +58,8 @@ defineStore('', {
     a() {
       // @ts-expect-error
       this.notExisting
-    },
-  },
+    }
+  }
 })
 
 defineStore('', {
@@ -71,8 +68,8 @@ defineStore('', {
     a() {
       // @ts-expect-error
       this.notExisting
-    },
-  },
+    }
+  }
 })
 
 interface Model {
@@ -85,7 +82,7 @@ export function init<User extends Model>(name = 'settings') {
     state: () => {
       return {
         // Set one of the properties to the generic type
-        user: {} as User,
+        user: {} as User
       }
     },
     actions: {
@@ -93,8 +90,8 @@ export function init<User extends Model>(name = 'settings') {
       set(u: UnwrapRef<User>) {
         // See linter error when trying to assign arg value to the state
         this.user = u
-      },
-    },
+      }
+    }
   })
 }
 
@@ -113,8 +110,8 @@ defineStore('', {
       // @ts-expect-error
       state.notExisting
       return
-    },
-  },
+    }
+  }
 })
 
 defineStore('', {
@@ -129,8 +126,8 @@ defineStore('', {
       // @ts-expect-error
       state.notExisting
       return
-    },
-  },
+    }
+  }
 })
 
 const store = useStore.$getStore()
@@ -172,10 +169,10 @@ const useNoG = defineStore('noAG', { state: () => ({}), actions: {} })
 const noSAG = useNoSAG.$getStore()
 const noSA = useNoSA.$getStore()
 const noAG = useNoAG.$getStore()
-const noSG = useNoSG()
-const noS = useNoS()
-const noA = useNoA()
-const noG = useNoG()
+const noSG = useNoSG.$getStore()
+const noS = useNoS.$getStore()
+const noA = useNoA.$getStore()
+const noG = useNoG.$getStore()
 
 // @ts-expect-error
 store.notExisting
@@ -199,5 +196,3 @@ noS.notExisting
 noA.notExisting
 // @ts-expect-error
 noG.notExisting
-
-

@@ -1,10 +1,10 @@
 import {
-  expectType,
   createPinia,
-  StoreGeneric,
-  Pinia,
-  StateTree,
-  DefineStoreOptionsInPlugin,
+  type DefineStoreOptionsInPlugin,
+  expectType,
+  type Pinia,
+  type StateTree,
+  type StoreGeneric
 } from '.'
 
 const pinia = createPinia()
@@ -12,12 +12,5 @@ const pinia = createPinia()
 pinia.use(({ store, options, pinia }) => {
   expectType<StoreGeneric>(store)
   expectType<Pinia>(pinia)
-  expectType<
-    DefineStoreOptionsInPlugin<
-      string,
-      StateTree,
-      Record<string, any>,
-      Record<string, any>
-    >
-  >(options)
+  expectType<DefineStoreOptionsInPlugin<string, StateTree, Record<string, any>, Record<string, any>>>(options)
 })

@@ -2,7 +2,7 @@ import { defineStore, expectType } from '.'
 
 const useStore = defineStore('main', {
   state: () => ({
-    user: 'Eduardo',
+    user: 'Eduardo'
   }),
   actions: {
     direct(name: string) {
@@ -27,8 +27,8 @@ const useStore = defineStore('main', {
     },
     async rejects(e: any) {
       throw e
-    },
-  },
+    }
+  }
 })
 
 let store = useStore.$getStore()

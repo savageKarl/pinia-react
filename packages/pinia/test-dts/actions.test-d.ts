@@ -32,8 +32,8 @@ const useStore = defineStore('name', {
       } else {
         return 'B'
       }
-    },
-  },
+    }
+  }
 })
 
 function outer(store: ReturnType<typeof useStore>): number {

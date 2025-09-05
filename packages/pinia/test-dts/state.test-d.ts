@@ -7,7 +7,7 @@ const double = computed({
   get: () => counter.value * 2,
   set(val) {
     counter.value = val / 2
-  },
+  }
 })
 const nestedRef = ref({ a: ref(0) })
 
@@ -20,7 +20,7 @@ const useStore = defineStore('name', {
     aRef: ref(0),
     aShallowRef: shallowRef({ msg: 'hi' }),
     anotherShallowRef: shallowRef({ aRef: ref('hello') }),
-    nestedRef,
+    nestedRef
   }),
 
   getters: {
@@ -36,7 +36,7 @@ const useStore = defineStore('name', {
       return undefined
     },
 
-    fromARef: (state) => state.aRef,
+    fromARef: (state) => state.aRef
   },
 
   actions: {
@@ -50,8 +50,8 @@ const useStore = defineStore('name', {
       this.$patch((state) => {
         expectType<number>(state.counter)
       })
-    },
-  },
+    }
+  }
 })
 
 const store = useStore.$getStore()
@@ -78,8 +78,8 @@ const onlyState = defineStore('main', {
     // counter: 0,
     // TODO: having only name fails...
     name: 'hey',
-    some: 'hello',
-  }),
+    some: 'hello'
+  })
 })()
 
 onlyState.$patch({ some: 'other' })
