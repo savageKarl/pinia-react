@@ -1,3 +1,10 @@
+# [1.5.0-beta.2](https://github.com/savageKarl/pinia-react/compare/v1.5.0-beta.1...v1.5.0-beta.2) (2025-09-06)
+
+
+### Bug Fixes
+
+* resolve defineStore type inference error ([6f04346](https://github.com/savageKarl/pinia-react/commit/6f043467442d349d30076c0aee9e7db409727acd))
+
 # [1.5.0-beta.1](https://github.com/savageKarl/pinia-react/compare/v1.4.0...v1.5.0-beta.1) (2025-08-29)
 
 
