@@ -69,7 +69,7 @@ export function setActivePinia(_pinia: Pinia) {
 export type PiniaPluginContext<
   Id extends string = string,
   S extends StateTree = StateTree,
-  G /* extends _GettersTree<S> */ = _GettersTree<S>,
+  G extends _GettersTree<S> = _GettersTree<S>,
   A /* extends _ActionsTree */ = _ActionsTree
 > = {
   /**
@@ -84,7 +84,7 @@ export type PiniaPluginContext<
   /**
    * Initial options defining the store when calling `defineStore()`.
    */
-  options: DefineStoreOptionsInPlugin<Id, S, G, A>
+  options: DefineStoreOptionsInPlugin<Id, S, G , A>
 }
 
 /**
