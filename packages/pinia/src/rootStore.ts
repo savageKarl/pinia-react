@@ -84,7 +84,7 @@ export type PiniaPluginContext<
   /**
    * Initial options defining the store when calling `defineStore()`.
    */
-  options: DefineStoreOptionsInPlugin<Id, S, G , A>
+  options: DefineStoreOptionsInPlugin<Id, S, G, A>
 }
 
 /**
