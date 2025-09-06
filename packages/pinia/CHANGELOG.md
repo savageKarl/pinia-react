@@ -1,3 +1,10 @@
+# [1.5.0-beta.4](https://github.com/savageKarl/pinia-react/compare/v1.5.0-beta.3...v1.5.0-beta.4) (2025-09-06)
+
+
+### Bug Fixes
+
+* remove tsdown and update package.json ([030566e](https://github.com/savageKarl/pinia-react/commit/030566eb570ce4f227af7e074757e4d72a671e44))
+
 # [1.5.0-beta.3](https://github.com/savageKarl/pinia-react/compare/v1.5.0-beta.2...v1.5.0-beta.3) (2025-09-06)
 
 
