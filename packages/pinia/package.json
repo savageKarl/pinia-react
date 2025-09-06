@@ -1,6 +1,6 @@
 {
   "name": "pinia-react",
-  "version": "1.5.1-beta.1",
+  "version": "1.5.1",
   "description": "Intuitive, type safe and flexible Store for React",
   "packageManager": "pnpm@10.14.0",
   "type": "module",
