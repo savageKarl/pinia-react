@@ -1,3 +1,10 @@
+# [1.5.0-beta.3](https://github.com/savageKarl/pinia-react/compare/v1.5.0-beta.2...v1.5.0-beta.3) (2025-09-06)
+
+
+### Bug Fixes
+
+* update package.json for types config ([8ab1f68](https://github.com/savageKarl/pinia-react/commit/8ab1f68ca3f057fb88a345c15cf40dd93efb637f))
+
 # [1.5.0-beta.2](https://github.com/savageKarl/pinia-react/compare/v1.5.0-beta.1...v1.5.0-beta.2) (2025-09-06)
 
 
