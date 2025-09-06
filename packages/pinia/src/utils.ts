@@ -1,8 +1,6 @@
 import { isReactive, isRef } from '@maoism/runtime-core'
 import type { _DeepPartial, StateTree } from './types'
 
-
-
 export function noop() {
   return {}
 }
