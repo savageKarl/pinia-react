@@ -1,3 +1,11 @@
+## [1.5.1-beta.1](https://github.com/savageKarl/pinia-react/compare/v1.5.0...v1.5.1-beta.1) (2025-09-06)
+
+
+### Bug Fixes
+
+* remove tsdown and update package.json ([030566e](https://github.com/savageKarl/pinia-react/commit/030566eb570ce4f227af7e074757e4d72a671e44))
+* resolve defineStore type inference error ([6f04346](https://github.com/savageKarl/pinia-react/commit/6f043467442d349d30076c0aee9e7db409727acd))
+* update package.json for types config ([8ab1f68](https://github.com/savageKarl/pinia-react/commit/8ab1f68ca3f057fb88a345c15cf40dd93efb637f))
 
 # [1.5.0-beta.4](https://github.com/savageKarl/pinia-react/compare/v1.5.0-beta.3...v1.5.0-beta.4) (2025-09-06)
 
