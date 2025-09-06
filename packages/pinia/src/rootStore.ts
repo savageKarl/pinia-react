@@ -69,7 +69,7 @@ export function setActivePinia(_pinia: Pinia) {
 export type PiniaPluginContext<
   Id extends string = string,
   S extends StateTree = StateTree,
-  G /* extends _GettersTree<S> */ = _GettersTree<S>,
+  G extends _GettersTree<S> = _GettersTree<S>,
   A /* extends _ActionsTree */ = _ActionsTree
 > = {
   /**
