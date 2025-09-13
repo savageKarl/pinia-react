@@ -1,4 +1,4 @@
-name: Release
+name: Release and Sync
 
 on:
   push:
@@ -12,6 +12,8 @@ jobs:
     permissions:
       contents: write
       issues: write
+      pull-requests: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,10 +30,8 @@ jobs:
         with:
           version: 10.14.0
 
-      - name: Configure pnpm
-        run: |
-          pnpm config set store-dir ~/.pnpm-store --global
-          pnpm config get store-dir
+      - name: Configure pnpm store path
+        run: pnpm config set store-dir ~/.pnpm-store
 
       - name: Setup pnpm cache
         uses: actions/cache@v4
@@ -41,16 +41,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Debug
-        run: |
-          ls -la
-          cat package.json
-          cat pnpm-lock.yaml || echo "pnpm-lock.yaml not found"
-          pnpm --version
-
       - name: Install Frontend Dependencies
         run: pnpm install --frozen-lockfile
-
 
       - name: Run Lint & Format & Test Check
         run: pnpm run-p check test
@@ -59,7 +51,53 @@ jobs:
         run: pnpm build
 
       - name: Semantic Release
+        id: semantic
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: pnpm --filter pinia-react semantic-release
+
+  sync-back-to-dev:
+      runs-on: ubuntu-latest
+      needs: release
+      if: github.ref == 'refs/heads/main' && needs.release.result == 'success'
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+          with:
+            token: ${{ secrets.PAT_FOR_ACTIONS }}
+            fetch-depth: 0
+
+        - name: Configure Git
+          run: |
+            git config --global user.name 'github-actions[bot]'
+            git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+        - name: Sync main back to dev
+          run: |
+            echo "--- 正在同步 main 分支到 dev ---"
+            
+            # 强制从远程拉取所有分支和标签的最新信息
+            echo "1. 正在从远程拉取所有最新数据..."
+            git fetch --all --tags
+            
+            # (调试日志) 打印出 main 和 dev 分支最新的5条 commit，检查 release commit 是否可见
+            echo "--- origin/main 最新日志 ---"
+            git log origin/main -n 5 --pretty=oneline
+            echo "--- origin/dev 最新日志 ---"
+            git log origin/dev -n 5 --pretty=oneline
+            
+            # 切换到 dev 分支并确保它是最新的
+            echo "2. 正在切换到 dev 分支..."
+            git checkout dev
+            git pull origin dev
+            
+            # 执行合并，--no-ff 确保总是生成一个 merge commit
+            echo "3. 正在将 origin/main 合并到 dev..."
+            git merge origin/main --no-ff -m "chore(sync): merge main back into dev after release [skip ci]"
+            
+            # 将更新后的 dev 分支推送回远程仓库
+            echo "4. 正在推送更新后的 dev 分支..."
+            git push origin dev
+            
+            echo "--- 同步完成 ---"
