@@ -580,7 +580,7 @@ export type _ExtractGettersFromSetupStore<SS> = SS extends undefined | void
  * stores. Extend this interface if you want to add custom options to both kinds
  * of stores.
  */
-export type DefineStoreOptionsBase<S extends StateTree, Store> = {}
+export declare interface DefineStoreOptionsBase<S extends StateTree, Store> {}
 
 /**
  * Options parameter of `defineStore()` for option stores. Can be extended to
