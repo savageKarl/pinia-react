@@ -92,12 +92,12 @@ jobs:
             git checkout dev
             git pull origin dev
             
-            # 执行合并，--no-ff 确保总是生成一个 merge commit
-            echo "3. 正在将 origin/main 合并到 dev..."
-            git merge origin/main --no-ff -m "chore(sync): merge main back into dev after release [skip ci]"
+            # 将 dev 分支 rebase 到最新的 main 分支上
+            echo "3. 正在将 dev rebase 到 origin/main..."
+            git rebase origin/main
             
-            # 将更新后的 dev 分支推送回远程仓库
-            echo "4. 正在推送更新后的 dev 分支..."
-            git push origin dev
+            # 将更新后的 dev 分支强制推送回远程仓库
+            echo "4. 正在强制推送更新后的 dev 分支..."
+            git push origin dev --force
             
             echo "--- 同步完成 ---"
