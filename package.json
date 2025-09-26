@@ -21,7 +21,10 @@
     "commit-msg": "npx --no-install commitlint --edit \"$1\""
   },
   "lint-staged": {
-    "*": "pnpm exec biome check --write"
+    "*.{js,ts,tsx,jsx,mjs,cjs}": "biome check --write",
+    "*.{json,graphql,grit}": "biome format --write",
+    "*.{css,scss}": "biome format --write",
+    "*.html": "biome format --write"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
