@@ -1,3 +1,10 @@
+## [1.5.2-beta.1](https://github.com/savageKarl/pinia-react/compare/v1.5.1...v1.5.2-beta.1) (2025-09-26)
+
+
+### Bug Fixes
+
+* **pinia:** use interface to declare the definestoreoptionsbase type ([d04224f](https://github.com/savageKarl/pinia-react/commit/d04224f9ef6c7af266d9342197cafe95c4296858))
+
 ## [1.5.1](https://github.com/savageKarl/pinia-react/compare/v1.5.0...v1.5.1) (2025-09-06)
 
 
