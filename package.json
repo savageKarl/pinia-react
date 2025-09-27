@@ -1,24 +1,28 @@
 {
   "name": "@pinia-react/root",
-  "packageManager": "pnpm@10.14.0",
   "type": "module",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "packages/playground/*"
+  ],
   "scripts": {
     "prepare": "npx simple-git-hooks",
-    "build": "pnpm --filter pinia-react build",
-    "playground-react": "pnpm --filter playground-react dev",
-    "playground-nextjs": "pnpm --filter playground-nextjs dev",
+    "dev": "bun --filter pinia-react dev",
+    "build": "bun --filter pinia-react build",
+    "playground-react": "bun --filter playground-react dev",
+    "playground-nextjs": "bun --filter playground-nextjs dev",
     "test": "vitest run",
-    "test-dts": "pnpm --filter pinia-react test-dts",
-    "check": "pnpm exec biome check",
-    "format": "pnpm exec biome check --write",
-    "docs-dev": "pnpm --filter docs dev",
-    "docs-build": "pnpm --filter docs build",
-    "docs-preview": "pnpm --filter docs preview"
+    "test-dts": "bun --filter pinia-react test-dts",
+    "check": "biome check",
+    "format": "biome check --write",
+    "docs-dev": "bun --filter docs dev",
+    "docs-build": "bun --filter docs build",
+    "docs-preview": "bun --filter docs preview"
   },
   "simple-git-hooks": {
-    "pre-commit": "pnpm exec lint-staged",
-    "commit-msg": "npx --no-install commitlint --edit \"$1\""
+    "pre-commit": "npx lint-staged",
+    "commit-msg": "bunx --no-install commitlint --edit \"$1\""
   },
   "lint-staged": {
     "*.{js,ts,tsx,jsx,mjs,cjs}": "biome check --write",
@@ -43,7 +47,7 @@
     "@types/react": "^19.1.3",
     "@types/react-dom": "^19.1.4",
     "jsdom": "^26.1.0",
-    "lint-staged": "^16.1.6",
+    "lint-staged": "^16.2.1",
     "npm-run-all": "^4.1.5",
     "semantic-release": "^24.2.7",
     "simple-git-hooks": "^2.13.1",
