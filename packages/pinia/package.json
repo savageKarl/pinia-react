@@ -32,6 +32,7 @@
     "access": "public"
   },
   "scripts": {
+    "dev": "tsup --watch",
     "build": "tsup",
     "playground-react": "vite playground/react",
     "playground-nextjs": "pnpm next dev ./playground/nextjs",
