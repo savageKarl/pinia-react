@@ -43,10 +43,15 @@ jobs:
       - name: Build
         run: bun run build
 
+      # --- 新增步骤：为 NPM 创建认证配置文件 ---
+      - name: Setup .npmrc for publishing
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
       - name: Run release-it
         id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # NPM_TOKEN 仍然需要保留，因为上一步的命令会用到它
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
