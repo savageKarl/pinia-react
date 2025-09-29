@@ -37,7 +37,7 @@
     "playground-react": "vite playground/react",
     "playground-nextjs": "pnpm next dev ./playground/nextjs",
     "test": "vitest",
-    "semantic-release": "semantic-release",
+    "release": "release-it",
     "test-dts": "tsc -p ./test-dts/tsconfig.json"
   },
   "keywords": [
