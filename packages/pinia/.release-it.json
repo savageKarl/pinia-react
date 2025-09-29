@@ -1,0 +1,22 @@
+{
+  "git": {
+    "commitMessage": "chore(release): v${version} [skip ci]",
+    "tagName": "v${version}",
+    "assets": ["package.json", "CHANGELOG.md"]
+  },
+  "npm": {
+    "publish": true
+  },
+  "github": {
+    "release": true
+  },
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": "angular",
+      "infile": "CHANGELOG.md"
+    }
+  },
+  "hooks": {
+    "after:bump": "bun run build"
+  }
+}
