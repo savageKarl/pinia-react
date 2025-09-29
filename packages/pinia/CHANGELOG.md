@@ -1,3 +1,12 @@
+
+
+## [1.5.2-beta.4](https://github.com/savageKarl/pinia-react/compare/v1.5.2-beta.3...v1.5.2-beta.4) (2025-09-29)
+
+
+### Bug Fixes
+
+* update version ([d37a6a4](https://github.com/savageKarl/pinia-react/commit/d37a6a44b5b8f784780b7b3486d57bfb12ff2d1a))
+
 ## [1.5.2-beta.1](https://github.com/savageKarl/pinia-react/compare/v1.5.1...v1.5.2-beta.1) (2025-09-26)
 
 
