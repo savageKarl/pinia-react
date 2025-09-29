@@ -1,7 +1,8 @@
 {
   "git": {
     "commitMessage": "chore(release): v${version} [skip ci]",
-    "tagName": "v${version}"
+    "tagName": "v${version}",
+    "assets": ["packages/pinia/package.json", "packages/pinia/CHANGELOG.md"]
   },
   "npm": {
     "publish": true
@@ -12,7 +13,7 @@
   "plugins": {
     "@release-it/conventional-changelog": {
       "preset": "angular",
-      "infile": "CHANGELOG.md"
+      "infile": "packages/pinia/CHANGELOG.md"
     }
   },
   "hooks": {
