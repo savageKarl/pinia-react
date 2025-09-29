@@ -43,12 +43,13 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Semantic Release
+      - name: Semantic Release (Debug Dry Run)
         id: semantic
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: bun run --filter pinia-react semantic-release
+          DEBUG: "semantic-release:*" # 开启 semantic-release 的所有调试日志
+        run: bun run --filter pinia-react semantic-release --dry-run
 
   sync-back-to-dev:
     runs-on: ubuntu-latest
