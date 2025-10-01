@@ -1,12 +1,4 @@
-# Changelog
 
-## [1.5.2-beta.6](https://github.com/savageKarl/pinia-react/compare/v1.5.2-beta.5...v1.5.2-beta.6) (2025-09-29)
-
-
-### Bug Fixes
-
-* update deps ([49a4524](https://github.com/savageKarl/pinia-react/commit/49a4524c38d7d2d6d93a5d84def8ae649e311056))
-* update deps ([47ab205](https://github.com/savageKarl/pinia-react/commit/47ab205ead13436ce0674edd5e049e93a4bb510d))
 
 ## [1.5.2-beta.5](https://github.com/savageKarl/pinia-react/compare/v1.5.2-beta.4...v1.5.2-beta.5) (2025-09-29)
 
