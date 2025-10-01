@@ -26,6 +26,7 @@ jobs:
         with:
           bun-version: latest
       
+      # --- 修正：将 Git 用户配置步骤加回来 ---
       - name: Configure Git
         run: |
           git config --global user.name 'github-actions[bot]'
@@ -54,7 +55,7 @@ jobs:
       - name: Run release-it
         id: release
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_FOR_ACTIONS }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
