@@ -9,6 +9,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "packageManager": "pnpm@10.14.0",
   "devDependencies": {
     "next": "^15.4.6"
   }
