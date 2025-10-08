@@ -1,11 +1,14 @@
 {
   "git": {
-    "commitMessage": "chore(release): v${version} [skip ci]",
+    "commitMessage": "chore(release): v${version}",
     "tagName": "v${version}",
-    "assets": ["package.json", "CHANGELOG.md"]
+    "assets": ["package.json", "CHANGELOG.md"],
+    "push": false,
+    "skipCI": false
   },
   "npm": {
-    "publish": true
+    "publish": true,
+    "tag": "${env.NPM_TAG}"
   },
   "github": {
     "release": true
@@ -16,7 +19,5 @@
       "infile": "CHANGELOG.md"
     }
   },
-  "hooks": {
-    "after:bump": "bun run build"
-  }
+  "hooks": {}
 }
