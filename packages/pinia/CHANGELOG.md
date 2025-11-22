@@ -1,5 +1,7 @@
 # Changelog
 
+## [1.5.2](https://github.com/savageKarl/pinia-react/compare/v1.5.2-beta.2...v1.5.2) (2025-11-22)
+
 ## [1.5.2-beta.6](https://github.com/savageKarl/pinia-react/compare/v1.5.2-beta.5...v1.5.2-beta.6) (2025-09-29)
 
 
