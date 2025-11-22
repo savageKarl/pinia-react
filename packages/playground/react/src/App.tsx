@@ -2,7 +2,7 @@ import { defineStore } from 'pinia-react'
 
 export const useCounterStore = defineStore('counter', {
   state: () => {
-    return { count: 0 }
+    return { count: 0, name: 'Eduardo' }
   },
   actions: {
     increment() {
@@ -10,25 +10,25 @@ export const useCounterStore = defineStore('counter', {
     }
   },
   getters: {
-    doubleCount(state) {
-      return state.count * 2
+    doubleCount(): number {
+      return this.count * 2
+    },
+    upperCaseName(state) {
+      return state.name.toUpperCase()
+    },
+    doubleName() {
+      return this.upperCaseName
+    },
+    composed() {
+      // // debugger
+      return this.upperCaseName + ': ok'
+    },
+    arrowUpper(): string {
+      return this.name.toUpperCase()
     }
   }
 })
 
-const increment = () => {
-  const store = useCounterStore.$getStore()
-  store.increment.call(null)
-}
-
 export function App() {
-  const store = useCounterStore()
-  return (
-    <>
-      <h1>React</h1>
-      <h2>count: {store.count}</h2>
-      <h3>doubleCount: {store.doubleCount}</h3>
-      <button onClick={increment}>increate</button>
-    </>
-  )
+  return <></>
 }

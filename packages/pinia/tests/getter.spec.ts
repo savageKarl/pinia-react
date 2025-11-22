@@ -17,7 +17,7 @@ describe('Getters', () => {
       doubleName(): string {
         return this.upperCaseName
       },
-      composed(): string {
+      composed() {
         // // debugger
         return this.upperCaseName + ': ok'
       },
