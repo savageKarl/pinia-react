@@ -5,7 +5,6 @@ export { defineStore } from './store'
 
 export type {
   DefineStoreOptions,
-  DefineStoreOptionsInPlugin,
   Pinia,
   PiniaCustomProperties,
   PiniaPlugin,

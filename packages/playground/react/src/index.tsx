@@ -7,7 +7,8 @@ import { createPinia } from 'pinia-react'
 createPinia()
 
 createRoot(document.querySelector('#app')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
+  // <StrictMode>
+  //   <App />
+  // </StrictMode>
+  <App />
 )
