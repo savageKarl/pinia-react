@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia-react'
+import { createPinia, defineStore } from 'pinia-react'
 import React from 'react'
 
 export const { useStore, getStore } = defineStore('main', {
@@ -9,14 +9,11 @@ export const { useStore, getStore } = defineStore('main', {
 
   getters: {
     double(state) {
-      console.debug('double')
       return state.count * 2
     },
-
-    doublePlusOne(state): number {
+    doublePlusOne(): number {
       return this.double + 1
     },
-
     message(state) {
       return `User ${state.user.name} has count ${state.count}`
     }
@@ -35,40 +32,57 @@ export const { useStore, getStore } = defineStore('main', {
     },
     randomReset() {
       this.$reset()
+    },
+    replaceState() {
+      this.$patch(() => {
+        return {
+          count: 999,
+          user: { name: 'Admin', level: 99 }
+        }
+      })
     }
   }
 })
 
-// --- 组件演示 ---
-
 const DemoComponent = () => {
   const store = useStore()
-  const g = store.double
+  const secret = (store as any).secretKey
 
   React.useEffect(() => {
-    // [验证]: 这里的 state 和 prev 也没有 unused 警告，因为我们使用了它们
     const unsub = store.$subscribe((state, prev) => {
-      console.log(`[Subscribe] Count: ${prev.count} -> ${state.count}`)
+      console.log(`[UI Subscribe] State changed. Prev count: ${prev.count}, New count: ${state.count}`)
     })
     return unsub
   }, [store])
 
   return (
     <div style={{ padding: 20, border: '1px solid #ccc', borderRadius: 8 }}>
-      <h3>Fixed Store Demo</h3>
-      <div>Count: {store.count}</div>
-      {/* [验证]: store.double 返回 number，ReactNode 兼容，不再报错 */}
-      <div>Double: {store.double}</div>
+      <h3>Pinia React Plugin & $state Demo (Fixed)</h3>
+      <div style={{ marginBottom: 10, padding: 10, background: '#f5f5f5' }}>
+        <strong>Plugin Injected Prop:</strong> {secret}
+      </div>
 
+      <div>Count: {store.count}</div>
+      <div>Double: {store.double}</div>
       <div>Double+1: {store.doublePlusOne}</div>
       <div>Message: {store.message}</div>
 
-      <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
+      <div style={{ marginTop: 15, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <button onClick={() => store.increment()}>Increment</button>
         <button onClick={() => store.changeName('Expert')}>Change Name</button>
-        <button onClick={() => store.randomReset()} style={{ color: 'red' }}>
+        <button onClick={() => store.randomReset()} style={{ color: 'orange' }}>
           Reset
         </button>
+        <button onClick={() => store.replaceState()} style={{ color: 'red' }}>
+          Replace State via $patch
+        </button>
+      </div>
+
+      <div style={{ marginTop: 20 }}>
+        <details>
+          <summary>Current Full State ($state)</summary>
+          <pre style={{ fontSize: 12 }}>{JSON.stringify(store.$state, null, 2)}</pre>
+        </details>
       </div>
     </div>
   )

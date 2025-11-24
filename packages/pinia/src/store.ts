@@ -1,9 +1,14 @@
-// packages/pinia/src/store.ts
-
 import { type Draft, enablePatches, type Patch, produce, setAutoFreeze } from 'immer'
 import { useCallback, useRef, useSyncExternalStore } from 'react'
 import { getActivePinia } from './rootStore'
-import type { DefineStoreOptions, StateTree, Store, StoreDefinition, SubscriptionCallback } from './types'
+import type {
+  DefineStoreOptions,
+  PiniaPluginContext,
+  StateTree,
+  Store,
+  StoreDefinition,
+  SubscriptionCallback
+} from './types'
 
 enablePatches()
 setAutoFreeze(false)
@@ -41,6 +46,7 @@ export function defineStore<
     getterCache: Map<string, any>
     getterDependencies: Map<string, Set<string>>
     createStoreProxy: (onAccess?: (path: string[]) => void) => Store<Id, S, G, A>
+    customProperties: Map<string, any>
   } | null = null
 
   function createStoreInstance(): Store<Id, S, G, A> {
@@ -54,7 +60,8 @@ export function defineStore<
       listeners: new Set<(state: S, prev: S, patches: Patch[]) => void>(),
       getterCache: new Map<string, any>(),
       getterDependencies: new Map<string, Set<string>>(),
-      createStoreProxy: (_onAccess?: (path: string[]) => void) => storePublicApi
+      createStoreProxy: (_onAccess?: (path: string[]) => void) => storePublicApi,
+      customProperties: new Map<string, any>()
     }
     scope = localScope
 
@@ -105,9 +112,7 @@ export function defineStore<
           get(obj, key) {
             if (typeof key === 'symbol') return Reflect.get(obj, key)
             const currentPath = [...path, String(key)]
-            // 如果是为 getter 收集依赖，则记录深层路径
             dependencies?.add(currentPath.join('.'))
-            // 如果是为 React 组件收集依赖，也记录
             onAccess?.(currentPath)
 
             const value = Reflect.get(obj, key)
@@ -123,6 +128,7 @@ export function defineStore<
         get(_target, key, receiver) {
           const strKey = String(key)
 
+          if (strKey === '$state') return scope!.currentState
           if (strKey === '$patch') return $patch
           if (strKey === '$reset') return $reset
           if (strKey === '$subscribe') return $subscribe
@@ -145,23 +151,16 @@ export function defineStore<
             isGetterComputing.add(strKey)
             const dependencies = new Set<string>()
 
-            // [核心修复]
-            // 创建一个临时的、专门用于追踪 getter 内部依赖的代理。
-            // 这个代理会同时追踪 this (其他 getter) 和 state (状态) 的访问。
             const trackingProxyForThis = createStoreProxy((path) => {
               const topKey = path[0]
-              // 如果是访问另一个 getter，则将其依赖合并过来
               if (topKey in getters) {
                 const nestedDeps = scope!.getterDependencies.get(topKey)
                 if (nestedDeps) nestedDeps.forEach((dep) => dependencies.add(dep))
               } else {
-                // 否则，记录 state 路径
                 dependencies.add(path.join('.'))
               }
             })
 
-            // [核心修复]
-            // state 参数也必须是代理，才能追踪到 state.xxx 的访问
             const trackingStateProxy = createStateProxy(state, [], dependencies)
 
             const result = (getters as any)[strKey].call(trackingProxyForThis, trackingStateProxy)
@@ -176,11 +175,27 @@ export function defineStore<
             return (actions as any)[strKey].bind(receiver)
           }
 
+          if (scope!.customProperties.has(strKey)) {
+            return scope!.customProperties.get(strKey)
+          }
+
           return Reflect.get(_target, key, receiver)
         },
-        set() {
-          console.warn(`[${id}] Store is read-only. Use $patch for mutations.`)
-          return false
+        set(_target, key, value) {
+          const strKey = String(key)
+
+          if (strKey === '$state') {
+            console.warn(`[${id}] Do not replace "$state" directly. Use "$patch()" to replace the whole state.`)
+            return false
+          }
+
+          if (strKey in scope!.currentState || strKey in getters || strKey in actions) {
+            console.warn(`[${id}] Store is read-only. Use "$patch()" for mutations.`)
+            return false
+          }
+
+          scope!.customProperties.set(strKey, value)
+          return true
         }
       }) as Store<Id, S, G, A>
     }
@@ -188,7 +203,9 @@ export function defineStore<
     scope.createStoreProxy = createStoreProxy
     storePublicApi = createStoreProxy()
 
-    pinia._p.forEach((plugin) => {})
+    pinia._p.forEach((plugin) => {
+      plugin({ id, store: storePublicApi, options } as PiniaPluginContext)
+    })
 
     pinia._s.set(id, storePublicApi as any)
     return storePublicApi
@@ -196,7 +213,10 @@ export function defineStore<
 
   function getStore(): Store<Id, S, G, A> {
     const pinia = getActivePinia()
-    return pinia._s.has(id) ? (pinia._s.get(id) as Store<Id, S, G, A>) : createStoreInstance()
+    if (!pinia._s.has(id)) {
+      createStoreInstance()
+    }
+    return pinia._s.get(id) as Store<Id, S, G, A>
   }
 
   function useStore(): Store<Id, S, G, A> {
@@ -205,41 +225,44 @@ export function defineStore<
     const trackedPaths = useRef(new Set<string>())
     trackedPaths.current.clear()
 
-    const subscribe = useRef((onStoreChange: () => void) => {
-      const listener = (_state: S, _prevState: S, patches: Patch[]) => {
-        let shouldUpdate = false
-        const getters = options.getters || {}
+    const subscribe = useCallback(
+      (onStoreChange: () => void) => {
+        const listener = (_state: S, _prevState: S, patches: Patch[]) => {
+          let shouldUpdate = false
+          const getters = options.getters || {}
 
-        for (const path of trackedPaths.current) {
-          const pathSet = new Set<string>()
-          const topKey = path.split('.')[0]
+          for (const path of trackedPaths.current) {
+            const pathSet = new Set<string>()
+            const topKey = path.split('.')[0]
 
-          if (topKey in getters) {
-            const deps = scope!.getterDependencies.get(topKey)
-            if (deps) {
-              deps.forEach((dep) => pathSet.add(dep))
+            if (topKey in getters) {
+              const deps = scope!.getterDependencies.get(topKey)
+              if (deps) {
+                deps.forEach((dep) => pathSet.add(dep))
+              }
+            } else {
+              pathSet.add(path)
             }
-          } else {
-            pathSet.add(path)
+
+            if (isAffected(patches, pathSet)) {
+              shouldUpdate = true
+              break
+            }
           }
 
-          if (isAffected(patches, pathSet)) {
-            shouldUpdate = true
-            break
+          if (shouldUpdate) {
+            onStoreChange()
           }
         }
-
-        if (shouldUpdate) {
-          onStoreChange()
-        }
-      }
-      scope!.listeners.add(listener)
-      return () => scope!.listeners.delete(listener)
-    })
+        scope!.listeners.add(listener)
+        return () => scope!.listeners.delete(listener)
+      },
+      [options.getters]
+    )
 
     const getSnapshot = useCallback(() => scope!.currentState, [])
 
-    useSyncExternalStore(subscribe.current, getSnapshot, getSnapshot)
+    useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
     const trackingProxy = scope!.createStoreProxy((path) => {
       trackedPaths.current.add(path.join('.'))
