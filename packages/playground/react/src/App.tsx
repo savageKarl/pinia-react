@@ -21,9 +21,10 @@ export const { useStore, getStore } = defineStore('main', {
 
   actions: {
     increment() {
-      this.$patch((state) => {
-        state.count++
-      })
+      this.count++
+      // this.$patch((state) => {
+      //   state.count++
+      // })
     },
     changeName(name: string) {
       this.$patch((state) => {
@@ -34,11 +35,11 @@ export const { useStore, getStore } = defineStore('main', {
       this.$reset()
     },
     replaceState() {
-      this.$patch(() => {
-        return {
+      this.$patch((state) => {
+        Object.assign(state, {
           count: 999,
           user: { name: 'Admin', level: 99 }
-        }
+        })
       })
     }
   }

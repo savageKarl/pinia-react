@@ -7,7 +7,8 @@ import type {
   StateTree,
   Store,
   StoreDefinition,
-  SubscriptionCallback
+  SubscriptionCallback,
+  TransformActions
 } from './types'
 
 enablePatches()
@@ -54,6 +55,8 @@ export function defineStore<
     const initialState = options.state()
 
     let storePublicApi: Store<Id, S, G, A>
+    let devTools: any
+    let isTimeTraveling = false
 
     const localScope = {
       currentState: initialState,
@@ -65,11 +68,15 @@ export function defineStore<
     }
     scope = localScope
 
+    const isGetterComputing = new Set<string>()
+
     const emit = (nextState: S, oldState: S, patches: Patch[]) => {
       scope!.listeners.forEach((fn) => fn(nextState, oldState, patches))
     }
 
-    const internalPatch = (updater: (draft: Draft<S>) => void | S, isReset = false) => {
+    const internalPatch = (updater: (draft: Draft<S>) => void | S, actionName: string, isReset = false) => {
+      if (isTimeTraveling) return
+
       const oldState = scope!.currentState
       let patches: Patch[] = []
 
@@ -80,19 +87,27 @@ export function defineStore<
       if (patches.length > 0 || isReset) {
         scope!.currentState = nextState
         pinia.state[id] = nextState
+        if (devTools) {
+          devTools.send({ type: actionName, payload: patches }, nextState)
+        }
         emit(nextState, oldState, patches)
       }
     }
 
-    const $patch = (updater: (draft: Draft<S>) => void | S) => internalPatch(updater)
-    const $reset = () => internalPatch(() => options.state(), true)
+    const $patch = (updater: (draft: Draft<S>) => void) => {
+      internalPatch((draft) => {
+        updater(draft)
+      }, '@patch')
+    }
+
+    const $reset = () => internalPatch(() => options.state(), '@reset', true)
+
     const $subscribe = (callback: SubscriptionCallback<S>) => {
       const listener = (state: S, prev: S) => callback(state, prev)
       scope!.listeners.add(listener)
       return () => scope!.listeners.delete(listener)
     }
 
-    const actions = options.actions || ({} as A)
     const getters = options.getters || ({} as G)
 
     const getterInvalidationListener = (_state: S, _prevState: S, patches: Patch[]) => {
@@ -104,9 +119,32 @@ export function defineStore<
     }
     scope.listeners.add(getterInvalidationListener)
 
-    const createStoreProxy = (onAccess?: (path: string[]) => void): Store<Id, S, G, A> => {
-      const isGetterComputing = new Set<string>()
+    const originalActions = options.actions || ({} as A)
+    const wrappedActions = {} as TransformActions<A>
 
+    Object.keys(originalActions).forEach((actionName) => {
+      const originalAction = (originalActions as any)[actionName]
+
+      ;(wrappedActions as any)[actionName] = (...args: any[]) => {
+        const recipe = (draft: Draft<S>) => {
+          const actionContextProxy = new Proxy({} as any, {
+            get(_, key) {
+              const strKey = String(key)
+              if (Reflect.has(draft, strKey)) return (draft as any)[strKey]
+              return Reflect.get(storePublicApi, key, storePublicApi)
+            },
+            set(_, key, value) {
+              ;(draft as any)[String(key)] = value
+              return true
+            }
+          })
+          originalAction.apply(actionContextProxy, args)
+        }
+        internalPatch(recipe, actionName)
+      }
+    })
+
+    const createStoreProxy = (onAccess?: (path: string[]) => void): Store<Id, S, G, A> => {
       const createStateProxy = (target: any, path: string[], dependencies?: Set<string>): any => {
         return new Proxy(target, {
           get(obj, key) {
@@ -171,8 +209,8 @@ export function defineStore<
             return result
           }
 
-          if (strKey in actions) {
-            return (actions as any)[strKey].bind(receiver)
+          if (strKey in wrappedActions) {
+            return (wrappedActions as any)[strKey]
           }
 
           if (scope!.customProperties.has(strKey)) {
@@ -189,8 +227,8 @@ export function defineStore<
             return false
           }
 
-          if (strKey in scope!.currentState || strKey in getters || strKey in actions) {
-            console.warn(`[${id}] Store is read-only. Use "$patch()" for mutations.`)
+          if (strKey in scope!.currentState || strKey in getters || strKey in wrappedActions) {
+            console.warn(`[${id}] Store is read-only. Use actions for mutations.`)
             return false
           }
 
@@ -208,6 +246,27 @@ export function defineStore<
     })
 
     pinia._s.set(id, storePublicApi as any)
+
+    if (typeof window !== 'undefined' && (window as any).__REDUX_DEVTOOLS_EXTENSION__) {
+      devTools = (window as any).__REDUX_DEVTOOLS_EXTENSION__.connect({ name: id })
+      devTools.init(scope.currentState)
+
+      devTools.subscribe((message: any) => {
+        if (message.type === 'DISPATCH' && message.state) {
+          const newState = JSON.parse(message.state)
+          isTimeTraveling = true
+          const oldState = scope!.currentState
+          scope!.currentState = newState
+          pinia.state[id] = newState
+
+          scope!.getterCache.clear()
+
+          emit(newState, oldState, [])
+          isTimeTraveling = false
+        }
+      })
+    }
+
     return storePublicApi
   }
 
@@ -228,13 +287,15 @@ export function defineStore<
     const subscribe = useCallback(
       (onStoreChange: () => void) => {
         const listener = (_state: S, _prevState: S, patches: Patch[]) => {
+          if (patches.length === 0) {
+            onStoreChange()
+            return
+          }
           let shouldUpdate = false
           const getters = options.getters || {}
-
           for (const path of trackedPaths.current) {
             const pathSet = new Set<string>()
             const topKey = path.split('.')[0]
-
             if (topKey in getters) {
               const deps = scope!.getterDependencies.get(topKey)
               if (deps) {
@@ -243,13 +304,11 @@ export function defineStore<
             } else {
               pathSet.add(path)
             }
-
             if (isAffected(patches, pathSet)) {
               shouldUpdate = true
               break
             }
           }
-
           if (shouldUpdate) {
             onStoreChange()
           }
