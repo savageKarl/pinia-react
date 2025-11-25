@@ -102,7 +102,7 @@ const DemoComponent = () => {
             </div>
           </>
         ) : (
-          <p>Loading persistence status...</p>
+          <p>Checking persistence status...</p>
         )}
         <p style={{ fontSize: '0.9em', color: '#666' }}>
           (Note: State also saves automatically on any change. Try refreshing the page.)

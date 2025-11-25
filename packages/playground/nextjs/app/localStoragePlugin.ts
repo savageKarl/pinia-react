@@ -3,23 +3,28 @@ import type { PiniaPlugin } from 'pinia-react'
 const isBrowser = typeof window !== 'undefined'
 
 export const localStoragePlugin: PiniaPlugin = ({ id, store }) => {
+  // 1. 在服务端，什么也不做
   if (!isBrowser) {
     return
   }
 
   const storageKey = `pinia-store-${id}`
 
-  try {
-    const storedState = localStorage.getItem(storageKey)
-    if (storedState) {
-      store.$patch((state) => {
-        Object.assign(state, JSON.parse(storedState))
-      })
+  // 2. 在客户端，异步恢复状态以防水合错误
+  setTimeout(() => {
+    try {
+      const storedState = localStorage.getItem(storageKey)
+      if (storedState) {
+        store.$patch((state) => {
+          Object.assign(state, JSON.parse(storedState))
+        })
+      }
+    } catch (error) {
+      console.error(`[pinia-plugin-persist] Failed to hydrate state for store "${id}"`, error)
     }
-  } catch (error) {
-    console.error(`[pinia-plugin-persist] Failed to hydrate state for store "${id}"`, error)
-  }
+  }, 0)
 
+  // 3. 订阅和方法可以同步设置
   store.$subscribe((state) => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(state))
