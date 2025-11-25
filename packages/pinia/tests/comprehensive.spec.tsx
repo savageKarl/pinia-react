@@ -1,98 +1,76 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-
-import { createPinia, defineStore, setActivePinia } from 'pinia-react'
+import { createPinia, defineStore, setActivePinia } from '../src'
 
 beforeEach(() => {
   setActivePinia(createPinia())
 })
 
-describe('single component', () => {
-  const useStore = defineStore('aStore', {
-    state: () => ({ count: 0 })
+describe('Comprehensive Component Tests', () => {
+  const { useStore: useStoreA } = defineStore('storeA', {
+    state: () => ({ count: 0 }),
+    actions: {
+      increment() {
+        this.count++
+      }
+    }
   })
 
-  const fn = vi.fn()
-  function A() {
-    const store = useStore()
-    fn()
+  const { useStore: useStoreB } = defineStore('storeB', {
+    state: () => ({ count: 0 }),
+    actions: {
+      increment() {
+        this.count++
+      }
+    }
+  })
+
+  const componentARenderFn = vi.fn()
+  function ComponentA() {
+    const storeA = useStoreA()
+    componentARenderFn()
     return (
-      <>
-        <h1>count: {store.count}</h1>
-        <button onClick={() => store.count++}>add</button>
-      </>
+      <div>
+        <h1 data-testid='countA'>{storeA.count}</h1>
+        <button onClick={storeA.increment}>Increment A</button>
+        <ComponentB />
+      </div>
     )
   }
 
-  test('should render correct number of times', async () => {
-    render(<A></A>)
-    const countText = screen.getByText(/0/)
-    expect(countText).toBeInTheDocument()
-    expect(fn).toHaveBeenCalledTimes(1)
-
-    const button = screen.getByRole('button')
-    await userEvent.click(button)
-    expect(screen.getByText(/1/)).toBeInTheDocument()
-    expect(fn).toHaveBeenCalledTimes(2)
-  })
-})
-
-describe('multiple component', () => {
-  const useA = defineStore('aStore', {
-    state: () => ({ count: 0 })
-  })
-
-  const useB = defineStore('bStore', {
-    state: () => ({ count: 0 })
-  })
-
-  const bfn = vi.fn()
-  function B() {
-    const store = useB()
-    bfn()
+  const componentBRenderFn = vi.fn()
+  function ComponentB() {
+    const storeB = useStoreB()
+    componentBRenderFn()
     return (
-      <>
-        <h1 role='headingB'>count: {store.count}</h1>
-        <button role='btnB' onClick={() => store.count++}>
-          add
-        </button>
-      </>
+      <div>
+        <h1 data-testid='countB'>{storeB.count}</h1>
+        <button onClick={storeB.increment}>Increment B</button>
+      </div>
     )
   }
 
-  const afn = vi.fn()
-  function A() {
-    const store = useA()
-    afn()
-    return (
-      <>
-        <h1 role='headingA'>count: {store.count}</h1>
-        <div>
-          <button role='btnA' onClick={() => store.count++}>
-            add
-          </button>
-        </div>
-        <B></B>
-      </>
-    )
-  }
+  test('should render and update independently', async () => {
+    render(<ComponentA />)
 
-  test('should render correct number of times', async () => {
-    render(<A />)
-    expect(afn).toHaveBeenCalledTimes(1)
-    const btnA = screen.getByRole('btnA')
-    await userEvent.click(btnA)
-    const headingA = screen.getByRole('headingA') as HTMLHeadingElement
-    expect(headingA.textContent).toContain(1)
-    expect(afn).toHaveBeenCalledTimes(2)
+    expect(componentARenderFn).toHaveBeenCalledTimes(1)
+    expect(componentBRenderFn).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('countA').textContent).toBe('0')
+    expect(screen.getByTestId('countB').textContent).toBe('0')
 
-    expect(bfn).toHaveBeenCalledTimes(2)
-    const btnB = screen.getByRole('btnB')
-    await userEvent.click(btnB)
-    await userEvent.click(btnB)
-    expect(afn).toHaveBeenCalledTimes(2)
-    expect(bfn).toHaveBeenCalledTimes(4)
-    const headingB = screen.getByRole('headingB')
-    expect(headingB.textContent).toContain(2)
+    await userEvent.click(screen.getByText('Increment A'))
+
+    expect(componentARenderFn).toHaveBeenCalledTimes(2)
+    expect(componentBRenderFn).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('countA').textContent).toBe('1')
+    expect(screen.getByTestId('countB').textContent).toBe('0')
+
+    await userEvent.click(screen.getByText('Increment B'))
+    await userEvent.click(screen.getByText('Increment B'))
+
+    expect(componentARenderFn).toHaveBeenCalledTimes(2)
+    expect(componentBRenderFn).toHaveBeenCalledTimes(3)
+    expect(screen.getByTestId('countA').textContent).toBe('1')
+    expect(screen.getByTestId('countB').textContent).toBe('2')
   })
 })

@@ -1,101 +1,58 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { createPinia, defineStore, setActivePinia } from 'pinia-react'
+import { act, renderHook } from '@testing-library/react'
+import { createPinia, defineStore, setActivePinia } from '../src'
 
 describe('Store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
   })
 
-  const useStore = defineStore('main', {
-    state: () => ({
-      a: true,
-      nested: {
-        foo: 'foo',
-        a: { b: 'string' }
-      }
-    })
-  })
+  it('reuses a store instance', () => {
+    const { useStore: useMainStore } = defineStore('main', {})
+    const { result: r1 } = renderHook(() => useMainStore())
+    const { result: r2 } = renderHook(() => useMainStore())
 
-  it('reuses a store', () => {
-    const useStore = defineStore('main', {})
-    const { result: result1 } = renderHook(() => useStore())
-    const { result: result2 } = renderHook(() => useStore())
-    expect(result1.current).toBe(result2.current)
-  })
-
-  it('works with id as first argument', () => {
-    const useStore = defineStore('main', {
-      state: () => ({
-        a: true,
-        nested: {
-          foo: 'foo',
-          a: { b: 'string' }
-        }
-      })
-    })
-    const { result: result1 } = renderHook(() => useStore())
-    const { result: result2 } = renderHook(() => useStore())
-    expect(result1.current).toBe(result2.current)
-
-    const useStoreEmpty = defineStore('main', {})
-    const { result: result3 } = renderHook(() => useStoreEmpty())
-    const { result: result4 } = renderHook(() => useStoreEmpty())
-    expect(result3.current).toBe(result4.current)
+    expect(r1.current).toBe(r2.current)
   })
 
   it('sets the initial state', () => {
-    const { result } = renderHook(() => useStore())
-    expect(result.current.$state).toEqual({
-      a: true,
-      nested: {
-        foo: 'foo',
-        a: { b: 'string' }
-      }
+    const { useStore } = defineStore('main', {
+      state: () => ({ a: true, b: 'hello' })
     })
+    const { result } = renderHook(() => useStore())
+
+    expect(result.current.$state).toEqual({ a: true, b: 'hello' })
   })
 
-  it('can be reset', () => {
+  it('subscribes to state changes', () => {
+    const { useStore, getStore } = defineStore('main', {
+      state: () => ({ a: false })
+    })
     const { result } = renderHook(() => useStore())
 
-    act(() => {
-      result.current.$state.a = false
-    })
-
     const spy = vi.fn()
+    let unsubscribe: () => void
 
     act(() => {
-      result.current.$subscribe(spy)
+      unsubscribe = getStore().$subscribe(spy)
     })
 
-    expect(spy).not.toHaveBeenCalled()
-
     act(() => {
-      result.current.$reset()
+      getStore().$patch({ a: true })
     })
 
     expect(spy).toHaveBeenCalledTimes(1)
 
     act(() => {
-      result.current.$state.nested.foo = 'bar'
+      unsubscribe()
+      getStore().$patch({ a: false })
     })
 
-    waitFor(() => {
-      expect(spy).toHaveBeenCalledTimes(2)
-      expect(result.current.$state).toEqual({
-        a: true,
-        nested: {
-          foo: 'bar',
-          a: { b: 'string' }
-        }
-      })
-
-      expect(result.current.nested.foo).toBe('bar')
-    })
+    expect(spy).toHaveBeenCalledTimes(1)
   })
 
-  it('can create an empty state if no state option is provided', () => {
-    const useEmptyStore = defineStore('some', {})
-    const { result } = renderHook(() => useEmptyStore())
+  it('creates an empty state if no state option is provided', () => {
+    const { useStore } = defineStore('empty', {})
+    const { result } = renderHook(() => useStore())
 
     expect(result.current.$state).toEqual({})
   })

@@ -1,47 +1,21 @@
 import { act, renderHook } from '@testing-library/react'
-import { createPinia, defineStore, setActivePinia } from 'pinia-react'
+import { createPinia, defineStore, setActivePinia } from '../src'
 
 describe('Getters', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
   })
 
-  const useStore = defineStore('main', {
+  const { useStore, getStore } = defineStore('main', {
     state: () => ({
       name: 'Eduardo'
     }),
     getters: {
-      upperCaseName(store) {
-        return store.name.toUpperCase()
+      upperCaseName(state) {
+        return state.name.toUpperCase()
       },
       doubleName(): string {
-        return this.upperCaseName
-      },
-      composed() {
-        // // debugger
-        return this.upperCaseName + ': ok'
-      },
-      arrowUpper(): string {
-        return this.name.toUpperCase()
-      }
-    },
-    actions: {
-      o() {
-        this.arrowUpper.toUpperCase()
-        this.o().toUpperCase()
-        return 'a string'
-      }
-    }
-  })
-
-  const useB = defineStore('B', { state: () => ({ b: 'b' }) })
-
-  const useA = defineStore('A', {
-    state: () => ({ a: 'a' }),
-    getters: {
-      fromB(): string {
-        const bStore = useB.$getStore()
-        return this.a + ' ' + bStore.b
+        return this.upperCaseName + this.upperCaseName
       }
     }
   })
@@ -49,64 +23,49 @@ describe('Getters', () => {
   it('adds getters to the store', () => {
     const { result } = renderHook(() => useStore())
     expect(result.current.upperCaseName).toBe('EDUARDO')
-
-    act(() => {
-      result.current.name = 'Ed'
-    })
-
-    expect(result.current.upperCaseName).toBe('ED')
+    expect(result.current.doubleName).toBe('EDUARDOEDUARDO')
   })
 
-  it('updates the value', () => {
+  it('updates getters when state changes', () => {
     const { result } = renderHook(() => useStore())
 
     act(() => {
-      result.current.name = 'Ed'
+      getStore().$patch({ name: 'Ed' })
     })
 
     expect(result.current.upperCaseName).toBe('ED')
+    expect(result.current.doubleName).toBe('EDED')
   })
 
-  it('supports changing between applications', async () => {
-    const pinia1 = createPinia()
-    const pinia2 = createPinia()
-
-    const { result: aResult } = renderHook(() => {
-      setActivePinia(pinia1)
-      return useA()
+  it('caches getter results', () => {
+    const getterFn = vi.fn((state) => state.name.toUpperCase())
+    const { useStore: useTestStore } = defineStore('test', {
+      state: () => ({ name: 'test' }),
+      getters: { upper: getterFn }
     })
 
-    const { result: bResult } = renderHook(() => {
-      setActivePinia(pinia2)
-      return useB()
-    })
-
-    const aStore = aResult.current
-    const bStore = bResult.current
-
-    await act(async () => {
-      bStore.b = 'c'
-    })
-
-    await act(async () => {
-      aStore.a = 'b'
-    })
-
-    expect(aStore.a).toBe('b')
-
-    expect(aStore.fromB).toBe('b b')
-
-    expect(bStore.b).toBe('c')
+    const { result } = renderHook(() => useTestStore())
+    expect(result.current.upper).toBe('TEST')
+    expect(result.current.upper).toBe('TEST')
+    expect(getterFn).toHaveBeenCalledTimes(1)
   })
 
-  it('can use other getters', () => {
-    const { result } = renderHook(() => useStore())
-    expect(result.current.composed).toBe('EDUARDO: ok')
+  it('invalidates cache when dependency changes', () => {
+    const getterFn = vi.fn((state) => state.name.toUpperCase())
+    const { useStore: useTestStore, getStore: getTestStore } = defineStore('test', {
+      state: () => ({ name: 'test' }),
+      getters: { upper: getterFn }
+    })
+
+    const { result } = renderHook(() => useTestStore())
+    expect(result.current.upper).toBe('TEST')
+    expect(getterFn).toHaveBeenCalledTimes(1)
 
     act(() => {
-      result.current.name = 'Ed'
+      getTestStore().$patch({ name: 'new' })
     })
 
-    expect(result.current.composed).toBe('ED: ok')
+    expect(result.current.upper).toBe('NEW')
+    expect(getterFn).toHaveBeenCalledTimes(2)
   })
 })

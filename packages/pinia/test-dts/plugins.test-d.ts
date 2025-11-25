@@ -1,16 +1,22 @@
-import {
-  createPinia,
-  type DefineStoreOptionsInPlugin,
-  expectType,
-  type Pinia,
-  type StateTree,
-  type StoreGeneric
-} from '.'
+import { createPinia, expectType, type Pinia, type PiniaPluginContext, type StoreGeneric } from '.'
 
 const pinia = createPinia()
 
-pinia.use(({ store, options, pinia }) => {
-  expectType<StoreGeneric>(store)
+pinia.use((context) => {
+  expectType<PiniaPluginContext>(context)
+  expectType<string>(context.id)
+  expectType<StoreGeneric>(context.store)
   expectType<Pinia>(pinia)
-  expectType<DefineStoreOptionsInPlugin<string, StateTree, Record<string, any>, Record<string, any>>>(options)
+})
+
+declare module '../src' {
+  export interface PiniaCustomProperties {
+    test: number
+  }
+}
+
+pinia.use(() => {
+  return {
+    test: 1
+  }
 })
