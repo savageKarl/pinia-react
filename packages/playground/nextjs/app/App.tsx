@@ -1,5 +1,7 @@
+'use client'
+
 import { defineStore } from 'pinia-react'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 
 export const { useStore } = defineStore('main', {
   state: () => ({
@@ -40,6 +42,11 @@ export const { useStore } = defineStore('main', {
 
 const DemoComponent = () => {
   const store = useStore()
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   React.useEffect(() => {
     const unsubscribe = store.$subscribe((state, prevState) => {
@@ -84,13 +91,19 @@ const DemoComponent = () => {
 
       <div className='card'>
         <h2>Plugin Demo (localStorage Persistence)</h2>
-        <p>
-          Is State Persisted in localStorage? <strong>{store.$isPersisted.toString()}</strong>
-        </p>
-        <div className='button-group'>
-          <button onClick={() => store.save()}>Manual Save</button>
-          <button onClick={() => store.clearPersistence()}>Clear From Storage</button>
-        </div>
+        {isMounted ? (
+          <>
+            <p>
+              Is State Persisted in localStorage? <strong>{store.$isPersisted.toString()}</strong>
+            </p>
+            <div className='button-group'>
+              <button onClick={() => store.save()}>Manual Save</button>
+              <button onClick={() => store.clearPersistence()}>Clear From Storage</button>
+            </div>
+          </>
+        ) : (
+          <p>Loading persistence status...</p>
+        )}
         <p style={{ fontSize: '0.9em', color: '#666' }}>
           (Note: State also saves automatically on any change. Try refreshing the page.)
         </p>

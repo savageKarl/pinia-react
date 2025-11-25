@@ -1,8 +1,8 @@
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import './style.css'
 import { createPinia } from 'pinia-react'
+import { localStoragePlugin } from './localStoragePlugin'
 
 const pinia = createPinia()
 
@@ -13,9 +13,6 @@ pinia.use(({ store, id }) => {
   })
 })
 
-createRoot(document.querySelector('#app')!).render(
-  // <StrictMode>
-  //   <App />
-  // </StrictMode>
-  <App />
-)
+pinia.use(localStoragePlugin)
+
+createRoot(document.querySelector('#app')!).render(<App />)

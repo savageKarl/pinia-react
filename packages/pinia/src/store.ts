@@ -231,7 +231,6 @@ export function defineStore<
             console.warn(`[${id}] Store is read-only. Use actions for mutations.`)
             return false
           }
-
           scope!.customProperties.set(strKey, value)
           return true
         }
@@ -242,7 +241,12 @@ export function defineStore<
     storePublicApi = createStoreProxy()
 
     pinia._p.forEach((plugin) => {
-      plugin({ id, store: storePublicApi, options } as PiniaPluginContext)
+      const pluginResult = plugin({ id, store: storePublicApi, options } as PiniaPluginContext)
+      if (pluginResult) {
+        Object.entries(pluginResult).forEach(([key, value]) => {
+          scope!.customProperties.set(key, value)
+        })
+      }
     })
 
     pinia._s.set(id, storePublicApi as any)
@@ -258,9 +262,7 @@ export function defineStore<
           const oldState = scope!.currentState
           scope!.currentState = newState
           pinia.state[id] = newState
-
           scope!.getterCache.clear()
-
           emit(newState, oldState, [])
           isTimeTraveling = false
         }

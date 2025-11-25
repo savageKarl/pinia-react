@@ -15,7 +15,6 @@ export interface PiniaCustomStateProperties<S extends StateTree = StateTree> {}
 export interface DefineStoreOptionsBase<S extends StateTree, Store> {}
 
 export interface StorePublicApi<S> {
-  // 修改点：回调函数的返回值类型从 `void | S` 变为了 `void`
   $patch: (updater: (draft: Draft<S>) => void) => void
   $reset: () => void
   $subscribe: (callback: SubscriptionCallback<S>) => () => void
@@ -66,7 +65,7 @@ export interface Pinia {
 }
 
 export interface PiniaPlugin {
-  (context: PiniaPluginContext): void
+  (context: PiniaPluginContext): Partial<PiniaCustomProperties> | void
 }
 
 export type PiniaPluginContext<
