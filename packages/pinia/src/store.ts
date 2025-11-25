@@ -38,8 +38,8 @@ function isAffected(patches: Patch[], trackedPaths: Set<string>): boolean {
 export function defineStore<
   Id extends string,
   S extends StateTree,
-  G extends Record<string, any>,
-  A extends Record<string, any>
+  G extends Record<string, any> = {},
+  A extends Record<string, any> = {}
 >(id: Id, options: DefineStoreOptions<S, G, A>): StoreDefinition<Id, S, G, A> {
   let scope: {
     currentState: S
