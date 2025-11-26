@@ -47,7 +47,6 @@ export function defineStore<
     getterCache: Map<string, any>
     getterDependencies: Map<string, Set<string>>
     createStoreProxy: (onAccess?: (path: string[]) => void) => Store<Id, S, G, A>
-    customProperties: Map<string, any>
   } | null = null
 
   function createStoreInstance(): Store<Id, S, G, A> {
@@ -63,8 +62,7 @@ export function defineStore<
       listeners: new Set<(state: S, prev: S, patches: Patch[]) => void>(),
       getterCache: new Map<string, any>(),
       getterDependencies: new Map<string, Set<string>>(),
-      createStoreProxy: (_onAccess?: (path: string[]) => void) => storePublicApi,
-      customProperties: new Map<string, any>()
+      createStoreProxy: (_onAccess?: (path: string[]) => void) => storePublicApi
     }
     scope = localScope
 
@@ -121,32 +119,16 @@ export function defineStore<
 
     const originalActions = options.actions || ({} as A)
     const wrappedActions = {} as TransformActions<A>
+    const proxyTarget = {}
 
-    Object.keys(originalActions).forEach((actionName) => {
-      const originalAction = (originalActions as any)[actionName]
-
-      ;(wrappedActions as any)[actionName] = (...args: any[]) => {
-        const recipe = (draft: Draft<S>) => {
-          const actionContextProxy = new Proxy({} as any, {
-            get(_, key) {
-              const strKey = String(key)
-              if (Reflect.has(draft, strKey)) return (draft as any)[strKey]
-              return Reflect.get(storePublicApi, key, storePublicApi)
-            },
-            set(_, key, value) {
-              ;(draft as any)[String(key)] = value
-              return true
-            }
-          })
-          originalAction.apply(actionContextProxy, args)
-        }
-        internalPatch(recipe, actionName)
+    function createStoreProxy(onAccess?: (path: string[]) => void): Store<Id, S, G, A> {
+      const readonlyWarning = () => {
+        console.warn(`[${id}] Store is read-only. Use actions for mutations.`)
+        return false
       }
-    })
 
-    const createStoreProxy = (onAccess?: (path: string[]) => void): Store<Id, S, G, A> => {
-      const createStateProxy = (target: any, path: string[], dependencies?: Set<string>): any => {
-        return new Proxy(target, {
+      const createStateProxy = (stateTarget: any, path: string[], dependencies?: Set<string>): any => {
+        return new Proxy(stateTarget, {
           get(obj, key) {
             if (typeof key === 'symbol') return Reflect.get(obj, key)
             const currentPath = [...path, String(key)]
@@ -158,11 +140,12 @@ export function defineStore<
               return createStateProxy(value, currentPath, dependencies)
             }
             return value
-          }
+          },
+          set: readonlyWarning
         })
       }
 
-      return new Proxy({} as any, {
+      return new Proxy(proxyTarget as any, {
         get(_target, key, receiver) {
           const strKey = String(key)
 
@@ -200,9 +183,7 @@ export function defineStore<
             })
 
             const trackingStateProxy = createStateProxy(state, [], dependencies)
-
             const result = (getters as any)[strKey].call(trackingProxyForThis, trackingStateProxy)
-
             isGetterComputing.delete(strKey)
             scope!.getterDependencies.set(strKey, dependencies)
             scope!.getterCache.set(strKey, result)
@@ -213,13 +194,9 @@ export function defineStore<
             return (wrappedActions as any)[strKey]
           }
 
-          if (scope!.customProperties.has(strKey)) {
-            return scope!.customProperties.get(strKey)
-          }
-
           return Reflect.get(_target, key, receiver)
         },
-        set(_target, key, value) {
+        set(_target, key, value, receiver) {
           const strKey = String(key)
 
           if (strKey === '$state') {
@@ -228,24 +205,46 @@ export function defineStore<
           }
 
           if (strKey in scope!.currentState || strKey in getters || strKey in wrappedActions) {
-            console.warn(`[${id}] Store is read-only. Use actions for mutations.`)
-            return false
+            return readonlyWarning()
           }
-          scope!.customProperties.set(strKey, value)
-          return true
+
+          return Reflect.set(_target, key, value, receiver)
         }
       }) as Store<Id, S, G, A>
     }
 
-    scope.createStoreProxy = createStoreProxy
     storePublicApi = createStoreProxy()
+
+    Object.keys(originalActions).forEach((actionName) => {
+      const originalAction = (originalActions as any)[actionName]
+
+      ;(wrappedActions as any)[actionName] = (...args: any[]) => {
+        let returnValue: any
+        const recipe = (draft: Draft<S>) => {
+          const actionContextProxy = new Proxy({} as any, {
+            get(_, key) {
+              const strKey = String(key)
+              if (Reflect.has(draft, strKey)) return (draft as any)[strKey]
+              return Reflect.get(storePublicApi, key, storePublicApi)
+            },
+            set(_, key, value) {
+              ;(draft as any)[String(key)] = value
+              return true
+            }
+          })
+          returnValue = originalAction.apply(actionContextProxy, args)
+        }
+        internalPatch(recipe, actionName)
+        return returnValue
+      }
+    })
+
+    scope.createStoreProxy = createStoreProxy
 
     pinia._p.forEach((plugin) => {
       const pluginResult = plugin({ id, store: storePublicApi, options } as PiniaPluginContext)
       if (pluginResult) {
-        Object.entries(pluginResult).forEach(([key, value]) => {
-          scope!.customProperties.set(key, value)
-        })
+        Object.defineProperties(proxyTarget, Object.getOwnPropertyDescriptors(pluginResult))
       }
     })
 
@@ -254,7 +253,6 @@ export function defineStore<
     if (typeof window !== 'undefined' && (window as any).__REDUX_DEVTOOLS_EXTENSION__) {
       devTools = (window as any).__REDUX_DEVTOOLS_EXTENSION__.connect({ name: id })
       devTools.init(scope.currentState)
-
       devTools.subscribe((message: any) => {
         if (message.type === 'DISPATCH' && message.state) {
           const newState = JSON.parse(message.state)
@@ -282,6 +280,7 @@ export function defineStore<
 
   function useStore(): Store<Id, S, G, A> {
     getStore()
+    const currentScope = scope!
 
     const trackedPaths = useRef(new Set<string>())
     trackedPaths.current.clear()
@@ -299,7 +298,7 @@ export function defineStore<
             const pathSet = new Set<string>()
             const topKey = path.split('.')[0]
             if (topKey in getters) {
-              const deps = scope!.getterDependencies.get(topKey)
+              const deps = currentScope.getterDependencies.get(topKey)
               if (deps) {
                 deps.forEach((dep) => pathSet.add(dep))
               }
@@ -315,17 +314,17 @@ export function defineStore<
             onStoreChange()
           }
         }
-        scope!.listeners.add(listener)
-        return () => scope!.listeners.delete(listener)
+        currentScope.listeners.add(listener)
+        return () => currentScope.listeners.delete(listener)
       },
-      [options.getters]
+      [options, currentScope]
     )
 
-    const getSnapshot = useCallback(() => scope!.currentState, [])
+    const getSnapshot = useCallback(() => currentScope.currentState, [currentScope])
 
     useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
-    const trackingProxy = scope!.createStoreProxy((path) => {
+    const trackingProxy = currentScope.createStoreProxy((path) => {
       trackedPaths.current.add(path.join('.'))
     })
 

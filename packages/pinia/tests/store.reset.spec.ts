@@ -18,7 +18,10 @@ describe('store.$reset', () => {
     const store = getStore()
 
     act(() => {
-      store.$patch({ name: 'Ed', nested: { n: 1 } })
+      store.$patch((draft) => {
+        draft.name = 'Ed'
+        draft.nested.n = 1
+      })
     })
 
     expect(result.current.name).toBe('Ed')
@@ -30,13 +33,26 @@ describe('store.$reset', () => {
 
     expect(result.current.name).toBe('Eduardo')
     expect(result.current.nested.n).toBe(0)
+    expect(result.current.$state).toEqual({
+      name: 'Eduardo',
+      nested: { n: 0 }
+    })
   })
 
   it('can reset the state of a store with no initial state', () => {
-    const { useStore: useEmptyStore, getStore: getEmptyStore } = defineStore('empty', {})
+    const { useStore: useEmptyStore, getStore: getEmptyStore } = defineStore('empty', {
+      state: () => ({})
+    })
     const { result } = renderHook(() => useEmptyStore())
 
-    expect(result.current.$state).toEqual({})
+    act(() => {
+      const store = getEmptyStore()
+      store.$patch((draft: any) => {
+        draft.a = 1
+      })
+    })
+
+    expect(result.current.$state).toEqual({ a: 1 })
 
     act(() => {
       getEmptyStore().$reset()

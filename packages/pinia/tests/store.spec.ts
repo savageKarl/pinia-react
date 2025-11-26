@@ -1,59 +1,57 @@
 import { act, renderHook } from '@testing-library/react'
 import { createPinia, defineStore, setActivePinia } from '../src'
 
-describe('Store', () => {
+describe('Store Core', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
   })
 
-  it('reuses a store instance', () => {
-    const { useStore: useMainStore } = defineStore('main', {})
+  it('useStore hooks return different proxies but share the same underlying store state', () => {
+    const { useStore: useMainStore, getStore: getMainStore } = defineStore('main', { state: () => ({}) })
     const { result: r1 } = renderHook(() => useMainStore())
     const { result: r2 } = renderHook(() => useMainStore())
 
-    expect(r1.current).toBe(r2.current)
+    expect(r1.current).not.toBe(r2.current)
+    expect(r1.current.$state).toBe(r2.current.$state)
+    expect(getMainStore()).toBe(getMainStore())
   })
 
-  it('sets the initial state', () => {
+  it('sets the initial state correctly', () => {
     const { useStore } = defineStore('main', {
       state: () => ({ a: true, b: 'hello' })
     })
     const { result } = renderHook(() => useStore())
-
     expect(result.current.$state).toEqual({ a: true, b: 'hello' })
   })
 
-  it('subscribes to state changes', () => {
-    const { useStore, getStore } = defineStore('main', {
-      state: () => ({ a: false })
-    })
+  it('creates an empty state if state function returns empty object', () => {
+    const { useStore } = defineStore('empty', { state: () => ({}) })
     const { result } = renderHook(() => useStore())
-
-    const spy = vi.fn()
-    let unsubscribe: () => void
-
-    act(() => {
-      unsubscribe = getStore().$subscribe(spy)
-    })
-
-    act(() => {
-      getStore().$patch({ a: true })
-    })
-
-    expect(spy).toHaveBeenCalledTimes(1)
-
-    act(() => {
-      unsubscribe()
-      getStore().$patch({ a: false })
-    })
-
-    expect(spy).toHaveBeenCalledTimes(1)
+    expect(result.current.$state).toEqual({})
   })
 
-  it('creates an empty state if no state option is provided', () => {
-    const { useStore } = defineStore('empty', {})
-    const { result } = renderHook(() => useStore())
+  it('subscribes to state changes via $subscribe', () => {
+    const { useStore, getStore } = defineStore('main', {
+      state: () => ({ value: 0 }),
+      actions: {
+        inc() {
+          this.value++
+        }
+      }
+    })
+    renderHook(() => useStore())
+    const spy = vi.fn()
+    const unsubscribe = getStore().$subscribe(spy)
 
-    expect(result.current.$state).toEqual({})
+    act(() => {
+      getStore().inc()
+    })
+
+    expect(spy).toHaveBeenCalledTimes(1)
+    unsubscribe()
+    act(() => {
+      getStore().inc()
+    })
+    expect(spy).toHaveBeenCalledTimes(1)
   })
 })

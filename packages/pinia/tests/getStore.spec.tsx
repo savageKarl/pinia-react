@@ -29,12 +29,12 @@ describe('getStore', () => {
     return (
       <div>
         <h1>count: {store.count}</h1>
-        <button onClick={incrementOutsideComponent}>Increment</button>
+        <button onClick={incrementOutsideComponent}>Increment Outside</button>
       </div>
     )
   }
 
-  test('updates component when state is changed via getStore', async () => {
+  test('updates component when state is changed via getStore from outside', async () => {
     render(<TestComponent />)
     expect(screen.getByText(/count: 0/)).toBeInTheDocument()
     expect(renderFn).toHaveBeenCalledTimes(1)
@@ -49,5 +49,10 @@ describe('getStore', () => {
 
     expect(screen.getByText(/count: 2/)).toBeInTheDocument()
     expect(renderFn).toHaveBeenCalledTimes(3)
+  })
+
+  test('getStore throws if pinia is not active', () => {
+    setActivePinia(undefined as any)
+    expect(() => getStore()).toThrow(/getActivePinia was called with no active Pinia/)
   })
 })
