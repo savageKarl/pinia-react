@@ -5,7 +5,7 @@ import { PackageManagerTabs, Tab, Tabs } from '@theme';
 ## Requirements
 
 - ES6+
-- React18+ 
+- React 18+
 
 ## Installation
 
@@ -13,7 +13,7 @@ Install pinia-react with your preferred package manager:
 
 <PackageManagerTabs command="install pinia-react" />
 
-Create a pinia instance
+Create a pinia instance and call it once at the root of your application. This is essential for all stores to share the same global state container.
 
 <Tabs>
   <Tab label="TSX">
@@ -32,13 +32,12 @@ createRoot(document.querySelector('#app')!).render(
     <App />
   </StrictMode>
 )
-
 ```
 
   </Tab>
   <Tab label="JSX">
 
-```tsx title="src/index.jsx"
+```jsx title="src/index.jsx"
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
@@ -52,7 +51,6 @@ createRoot(document.querySelector('#app')!).render(
     <App />
   </StrictMode>
 )
-
 ```
   </Tab>
 </Tabs>
@@ -61,10 +59,9 @@ createRoot(document.querySelector('#app')!).render(
 
 A Store is a container that encapsulates the global state (State), business logic for modifying the state (Actions), and readable data derived from the state (Getters) in an application. It allows any component in the application to access and modify shared data, thereby achieving cross-component communication and state synchronization.
 
-* **Single Source of Truth:** The Store centralizes all shared states in one place, avoiding data dispersion and confusion, making the application state predictable and easy to track.
-* **Decoupling:** The Store separates state management from components. Components only need to care about how to use and display data, not where the data comes from or how to modify it, which greatly reduces the coupling between components.
-* **Testability:** Centralized state management and logic make writing unit tests simpler because you can test the Store's behavior without rendering components.
-
+*   **Single Source of Truth:** The Store centralizes all shared states in one place, avoiding data dispersion and confusion, making the application state predictable and easy to track.
+*   **Decoupling:** The Store separates state management from components. Components only need to care about how to use and display data, not where the data comes from or how to modify it, which greatly reduces the coupling between components.
+*   **Testability:** Centralized state management and logic make writing unit tests simpler because you can test the Store's behavior without rendering components.
 
 ## When Should You Use a Store?
 

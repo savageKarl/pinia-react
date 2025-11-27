@@ -1,44 +1,51 @@
-import { PackageManagerTabs, Tab, Tabs } from '@theme';
+# Using a Store Outside of a Component
 
-# Using Store Outside Components
+Pinia-React stores can be used inside and outside of React components. While `useStore()` is a hook designed for components, you can use the `getStore()` function for all other scenarios.
 
-Pinia stores rely on a pinia instance to share the same store instance across all calls. Most of the time, you can simply call the useStore() function you defined and it works out of the box - you always need to install pinia in your entry file:
+## The `getStore` function
 
+When you define a store, `defineStore()` returns an object containing both `useStore` (the hook) and `getStore` (a plain function).
 
-<Tab label="JSX">
+The recommended pattern is to export both from your store definition file.
 
-```tsx title="src/index.jsx"
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { App } from './App'
-import './style.css'
-import { createPinia } from 'pinia-react'
+```tsx title="src/stores/auth-store.ts"
+import { defineStore } from 'pinia-react'
 
-// You need to install pinia in your entry file, this is important
-createPinia()
+const { useStore, getStore } = defineStore('auth', {
+  state: () => ({
+    isAuthenticated: false,
+    // ...
+  }),
+  actions: {
+    logout() {
+      this.isAuthenticated = false
+    }
+  }
+})
 
-createRoot(document.querySelector('#app')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-)
-
+export const useAuthStore = useStore
+export const getAuthStore = getStore
 ```
-</Tab>
 
-<Tab label="JSX">
+## Example Usage
 
-```tsx title="src/auth.js"
-import { useAuthStore } from './auth-store'
+Now, you can import `getAuthStore` in any JavaScript module, like a service file, an API client, or another store's action.
 
-async function auth() {
-  if (xxx) {
-    // To get the store outside of a component, you need to call $getStore, because defineStore returns a hook
-    const store = useAuthStore.$getStore()
+Here is an example of calling a store's action from a utility function:
+
+```tsx title="src/auth-service.ts"
+import { getAuthStore } from './stores/auth-store'
+
+export function performLogout() {
+  // Get the store instance by calling getStore()
+  const authStore = getAuthStore()
+
+  // You can now access state, getters, or actions
+  if (authStore.isAuthenticated) {
+    authStore.logout()
+    console.log('User has been logged out.')
   }
 }
-
 ```
-</Tab>
 
-
+This pattern ensures that you are always accessing the same, single instance of the store throughout your application, whether you are in a component or not.

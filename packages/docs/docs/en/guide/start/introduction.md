@@ -1,82 +1,84 @@
+
 # Introduction
 
-pinia-react is a React state management library inspired by Vue's [Pinia](https://github.com/vuejs/pinia). It's built upon Pinia's core code and leverages React Hooks and `useSyncExternalStore` to provide a concise, reactive, and TypeScript-friendly state management experience.
+pinia-react is a React state management library inspired by Vue's [Pinia](https://github.com/vuejs/pinia). It leverages React Hooks and `useSyncExternalStore` to provide a concise, reactive, and TypeScript-friendly state management experience.
 
-It's a React adaptation of [Pinia](https://github.com/vuejs/pinia), based on a portion of Pinia's core code and optimized for the React ecosystem (e.g., using `useSyncExternalStore` to support React 18's concurrent rendering). We strictly adhere to Pinia's MIT license and have retained the original author's copyright information in the license file.
+It's a React adaptation of Pinia, built with similar core concepts but optimized for the React ecosystem (e.g., using `useSyncExternalStore` to support React 18's concurrent rendering).
 
 ## Why You Should Use Pinia-React
 
-Pinia-React, as the React adaptation of Pinia, allows you to share state across components or pages. It automatically tracks state dependencies and only updates the necessary components. It's important to note that components don't re-render just because the store's data changes; it collects dependencies on-demand. For example, if a store has two pieces of data, `count` and `name`, and your component only uses `count`, then your component will only re-render when `count` changes.
+Pinia-React allows you to share state across components or pages. It automatically tracks state dependencies and only updates the necessary components. It's important to note that components don't re-render just because the store's data changes; it collects dependencies on-demand. For example, if a store has two pieces of data, `count` and `name`, and your component only uses `count`, then your component will only re-render when `count` changes.
 
 ## Basic Example
 
-Here's a basic example of the Pinia API (to continue reading this introduction, please make sure you've already read the [Getting Started](https://www.google.com/search?q=./getting-started.md) section). First, you can create a Store:
+Here's a basic example of the Pinia-React API (to continue reading this introduction, please make sure you've already read the [Getting Started](./getting-started.mdx) section). First, you can create a Store:
 
 ```tsx
-// stores/counter.js
+// stores/counter.ts
 import { defineStore } from 'pinia-react'
 
-export const useCounterStore = defineStore('counter', {
+const { useStore, getStore } = defineStore('counter', {
   state: () => {
     return { count: 0 }
   },
-  // You can also define it like this
-  // state: () => ({ count: 0 })
   actions: {
     increment() {
       this.count++
     },
   },
 })
+
+export const useCounterStore = useStore
+export const getCounterStore = getStore
 ```
 
 Then, you can **use** the store in a component:
 
 ```tsx
-export function App() {
+import { useCounterStore } from './stores/counter';
 
-  const store = useCounterStore()
-  counter.count++
-  // Autocomplete! ✨
-  counter.$patch({ count: counter.count + 1 })
-  // Or use an action instead
-  counter.increment()
+export function App() {
+  const counter = useCounterStore()
 
   return (
-    <div>Current Count: {{ counter.count }}</div>
+    <div>
+      <p>Current Count: {counter.count}</p>
+      <button onClick={() => counter.increment()}>Increment</button>
+    </div>
   )
 }
 ```
 
------
+
 
 ## Differences from Pinia
 
   - Pinia-React only supports the **options store style** and does not have the setup store style.
+  - Pinia-React has built-in support for Redux DevTools.
   - There is currently no test utility suite.
-  - There is currently no Devtools support.
   - There is currently no hot reloading support.
   - There are no Vue-specific helper functions for mapping state.
 
------
+
 
 ## Comparison
 
-There is a wide variety of React state management libraries, each with its own strengths. Pinia-React is one of them. Here, we'll mainly compare it with Zustand. For Redux, Valtio, Jotai, and Recoil, you can refer to the Zustand [documentation](https://www.google.com/search?q=https://zustand.docs.pmnd.rs/getting-started/comparison%23render-optimization-\(vs-redux\)).
+There is a wide variety of React state management libraries. Here, we'll mainly compare it with Zustand, a popular choice in the ecosystem.
 
-### State Model
+### State Update Model
 
-Pinia-React and Zustand take fundamentally different approaches to state management. Pinia-React is based on a **mutable state model**, while Zustand is based on an **immutable state model**.
+Both Pinia-React and Zustand use an **immutable state model**, which is a best practice for predictable state management. The key difference lies in their API philosophy for achieving immutability.
+
+- **Pinia-React** uses Immer under the hood, providing a **direct-mutation-style API**. You write simple, intuitive code like `this.count++`, and the library transparently handles the creation of a new, immutable state object for you. This simplifies development, especially for complex or nested state updates.
+
+- **Zustand** uses a **functional update API**. You must explicitly return a new state object inside the `set` function, manually handling immutability with techniques like the spread syntax (`...state`).
 
 ### Pinia-React
 
 ```tsx
-import { defineStore, createPinia } from 'pinia-react';
+import { defineStore } from 'pinia-react';
 
-// Use this in your entry file.
-const pinia = createPinia();
-
-export const useCounterStore = defineStore('counter', {
+const { useStore } = defineStore('counter', {
   state: () => ({
     count: 0,
   }),
@@ -89,6 +91,8 @@ export const useCounterStore = defineStore('counter', {
     },
   },
 });
+
+export const useCounterStore = useStore;
 ```
 
 ### Zustand
@@ -111,7 +115,9 @@ export const useCounterStoreZustand = create<CounterState>((set) => ({
 
 ### Render Optimization
 
-Another difference between Pinia-React and Zustand is that Pinia-React automatically collects dependencies for render optimization, whereas Zustand requires you to manually select dependencies for render optimization using selectors.
+- **Pinia-React** provides **automatic and transparent** render optimization. It tracks which properties are accessed during a component's render and will only trigger a re-render if one of those specific properties changes.
+
+- **Zustand** requires **manual render optimization** via selectors. To prevent re-renders from unrelated state changes, you must explicitly select the pieces of state your component needs.
 
 ### Pinia-React
 
@@ -119,6 +125,8 @@ Another difference between Pinia-React and Zustand is that Pinia-React automatic
 import React from 'react';
 import { useCounterStore } from './counterStore';
 
+// This component automatically subscribes only to `count`.
+// It will NOT re-render if another state property (e.g., `name`) changes.
 export function CounterWithPinia() {
   const counter = useCounterStore();
 
@@ -138,6 +146,7 @@ export function CounterWithPinia() {
 import React from 'react';
 import { useCounterStoreZustand } from './counterStore';
 
+// To optimize renders, we must select each piece of state or action individually.
 export function CounterWithZustand() {
   const count = useCounterStoreZustand((state) => state.count);
   const increment = useCounterStoreZustand((state) => state.increment);
