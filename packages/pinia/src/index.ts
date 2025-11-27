@@ -1,4 +1,3 @@
-// packages/pinia/src/index.ts
 export { createPinia } from './createPinia'
 export { getActivePinia, setActivePinia } from './rootStore'
 export { defineStore } from './store'
