@@ -16,13 +16,13 @@ export default defineConfig({
       label: 'English',
       title: 'Pinia-React',
       description: 'Static Site Generator'
-    },
-    {
-      lang: 'zh',
-      label: '简体中文',
-      title: 'Pinia-React',
-      description: '静态网站生成器'
     }
+    // {
+    //   lang: 'zh',
+    //   label: '简体中文',
+    //   title: 'Pinia-React',
+    //   description: '静态网站生成器'
+    // }
   ],
   themeConfig: {
     locales: [

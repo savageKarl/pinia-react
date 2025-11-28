@@ -12,7 +12,7 @@ The state is defined as a function that returns the initial state object.
 ```tsx
 import { defineStore } from 'pinia-react'
 
-const { useStore } = defineStore('storeId', {
+const { useStore, getStore } = defineStore('storeId', {
   // An arrow function is recommended for full type inference
   state: () => {
     return {
@@ -22,6 +22,9 @@ const { useStore } = defineStore('storeId', {
     }
   },
 })
+
+export const useMyStore = useStore
+export const getMyStore = getStore
 ```
 
 ## TypeScript
@@ -34,7 +37,7 @@ interface UserInfo {
   age: number
 }
 
-const { useStore } = defineStore('storeId', {
+const { useStore, getStore } = defineStore('storeId', {
   state: () => {
     return {
       userList: [] as UserInfo[],
@@ -52,7 +55,7 @@ interface State {
   user: UserInfo | null
 }
 
-const { useStore } = defineStore('storeId', {
+const { useStore, getStore } = defineStore('storeId', {
   state: (): State => {
     return {
       userList: [],
@@ -62,14 +65,38 @@ const { useStore } = defineStore('storeId', {
 })
 ```
 
-
 ## Accessing State
 
-You can access the state directly through the store instance to read or write to it (within actions).
+How you access state depends on the context:
+
+### In React Components
+
+Inside a React component or a custom hook, use the `useStore` hook to get the store instance.
 
 ```tsx
-const store = useStore()
-console.log(store.count)
+import { useMyStore } from './stores/myStore';
+
+function MyComponent() {
+  const store = useMyStore();
+  
+  return <div>Count: {store.count}</div>;
+}
+```
+
+### Within the Store (in actions or getters)
+
+Inside a store's own actions or getters, use the `this` keyword to access state and other store properties.
+
+```tsx
+defineStore('storeId', {
+  state: () => ({ count: 0 }),
+  actions: {
+    increment() {
+      // Use `this` to access state
+      this.count++;
+    }
+  }
+})
 ```
 
 ## Resetting State
@@ -81,44 +108,43 @@ const store = useStore()
 store.$reset()
 ```
 
-## Changing State
+## Changing State with `$patch`
 
-While actions are the recommended way to change state, you can also use the `$patch` method. It's useful for modifying multiple properties at once.
+While actions are the recommended way to change state, the `$patch` method is useful for batching multiple state mutations together.
 
-```tsx
-store.$patch({
-  count: store.count + 1,
-  name: 'DIO',
-})
-```
-
-The `$patch` method also accepts a function for complex changes, such as array manipulations. This function receives a draft of the state that you can safely "mutate":
+The `$patch` method accepts a single function as its argument. This function receives a `draft` version of the state, powered by Immer. You can safely "mutate" this `draft` object, and Immer will produce a new immutable state for you.
 
 ```tsx
-store.$patch((state) => {
-  state.items.push({ name: 'shoes', quantity: 1 })
+store.$patch((draft) => {
+  draft.count++;
+  draft.name = 'DIO';
+  draft.items.push({ name: 'shoes', quantity: 1 });
 })
 ```
 
 ## Replacing State
 
-You cannot directly replace the `$state` object:
+You cannot directly replace the entire `$state` object. The following will show a warning and will not work:
 
 ```tsx
-// This will NOT work and will show a warning
+// This will NOT work
 store.$state = { count: 24 }
 ```
 
-To replace the entire state, use `$patch` with the new state object:
+To achieve a "state replacement" effect, you can use `$patch` and assign the properties from your new state object to the draft. `Object.assign()` is a convenient way to do this.
 
 ```tsx
-store.$patch({
+const newState = {
   count: 24,
   name: 'Eduardo',
-  items: []
+  items: [{ name: 'shirt', quantity: 2 }]
+};
+
+store.$patch((draft) => {
+  // This will overwrite the draft's properties with the ones from newState
+  Object.assign(draft, newState);
 })
 ```
-
 
 ## Subscribing to State
 
