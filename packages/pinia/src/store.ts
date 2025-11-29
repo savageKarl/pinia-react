@@ -271,6 +271,9 @@ export function defineStore<
             get(_, key) {
               const strKey = String(key)
               if (Reflect.has(draft, strKey)) return (draft as any)[strKey]
+              if (strKey in getters) {
+                return (getters as any)[strKey].call(actionContextProxy, draft)
+              }
               return Reflect.get(storePublicApi, key, storePublicApi)
             },
             set(_, key, value) {
@@ -299,16 +302,57 @@ export function defineStore<
     if (typeof window !== 'undefined' && (window as any).__REDUX_DEVTOOLS_EXTENSION__) {
       devTools = (window as any).__REDUX_DEVTOOLS_EXTENSION__.connect({ name: id })
       devTools.init(localScope.currentState)
+
       devTools.subscribe((message: any) => {
-        if (message.type === 'DISPATCH' && message.state) {
-          const newState = JSON.parse(message.state)
-          isTimeTraveling = true
-          const oldState = localScope.currentState as S
-          localScope.currentState = newState
-          pinia.state[id] = newState
-          localScope.getterCache.clear()
-          emit(newState, oldState, [])
-          isTimeTraveling = false
+        if (message.type === 'DISPATCH') {
+          const payloadType = message.payload?.type
+
+          switch (payloadType) {
+            case 'JUMP_TO_STATE':
+            case 'JUMP_TO_ACTION':
+            case 'IMPORT_STATE': {
+              const newState = typeof message.state === 'string' ? JSON.parse(message.state) : message.state
+              if (!newState || typeof newState !== 'object') return
+
+              isTimeTraveling = true
+              const oldState = localScope.currentState as S
+              localScope.currentState = newState
+              pinia.state[id] = newState
+              localScope.getterCache.clear()
+              emit(newState, oldState, [])
+              isTimeTraveling = false
+              break
+            }
+
+            case 'COMMIT': {
+              devTools.init(localScope.currentState)
+              break
+            }
+
+            case 'ROLLBACK': {
+              const newState = typeof message.state === 'string' ? JSON.parse(message.state) : message.state
+              if (!newState || typeof newState !== 'object') return
+
+              isTimeTraveling = true
+              const oldState = localScope.currentState as S
+              localScope.currentState = newState
+              pinia.state[id] = newState
+              localScope.getterCache.clear()
+              emit(newState, oldState, [])
+              isTimeTraveling = false
+              break
+            }
+
+            case 'RESET': {
+              const originalState = options.state()
+              devTools.init(originalState)
+              internalPatch(() => originalState, '@reset', true)
+              break
+            }
+
+            default:
+              break
+          }
         }
       })
     }

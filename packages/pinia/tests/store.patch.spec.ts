@@ -108,4 +108,20 @@ describe('store.$patch', () => {
       list: [1]
     })
   })
+
+  it('keeps state intact if $patch updater throws an error', () => {
+    const { result } = renderHook(() => useStore())
+    const initialState = { ...result.current.$state }
+
+    expect(() => {
+      act(() => {
+        result.current.$patch((draft) => {
+          draft.a = !draft.a
+          throw new Error('Boom')
+        })
+      })
+    }).toThrow('Boom')
+
+    expect(result.current.$state).toEqual(initialState)
+  })
 })
