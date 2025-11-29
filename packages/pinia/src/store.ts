@@ -7,12 +7,16 @@ import type {
   StateTree,
   Store,
   StoreDefinition,
+  StoreScope,
   SubscriptionCallback,
   TransformActions
 } from './types'
 
 enablePatches()
 setAutoFreeze(false)
+
+let activeListenerId: string | null = null
+let activeGetterKey: string | null = null
 
 function isAffected(patches: Patch[], trackedPaths: Set<string>): boolean {
   if (trackedPaths.size === 0) return false
@@ -41,13 +45,34 @@ export function defineStore<
   G extends Record<string, any> = {},
   A extends Record<string, any> = {}
 >(id: Id, options: DefineStoreOptions<S, G, A>): StoreDefinition<Id, S, G, A> {
-  let scope: {
-    currentState: S
-    listeners: Set<(state: S, prev: S, patches: Patch[]) => void>
-    getterCache: Map<string, any>
-    getterDependencies: Map<string, Set<string>>
-    createStoreProxy: (onAccess?: (path: string[]) => void) => Store<Id, S, G, A>
-  } | null = null
+  const getters = options.getters || ({} as G)
+
+  function resolveGetterDependencies(
+    getterName: string,
+    getterDepsMap: Map<string, Set<string>>,
+    visited = new Set<string>()
+  ): Set<string> {
+    if (visited.has(getterName)) {
+      console.warn(`[pinia-react] Circular dependency in getters detected involving: ${getterName}`)
+      return new Set()
+    }
+    visited.add(getterName)
+
+    const finalDeps = new Set<string>()
+    const directDeps = getterDepsMap.get(getterName)
+
+    if (!directDeps) return finalDeps
+
+    for (const dep of directDeps) {
+      if (dep in getters) {
+        const nestedDeps = resolveGetterDependencies(dep, getterDepsMap, visited)
+        nestedDeps.forEach((d) => finalDeps.add(d))
+      } else {
+        finalDeps.add(dep)
+      }
+    }
+    return finalDeps
+  }
 
   function createStoreInstance(): Store<Id, S, G, A> {
     const pinia = getActivePinia()
@@ -57,25 +82,46 @@ export function defineStore<
     let devTools: any
     let isTimeTraveling = false
 
-    const localScope = {
+    const localScope: StoreScope = {
       currentState: initialState,
-      listeners: new Set<(state: S, prev: S, patches: Patch[]) => void>(),
-      getterCache: new Map<string, any>(),
-      getterDependencies: new Map<string, Set<string>>(),
-      createStoreProxy: (_onAccess?: (path: string[]) => void) => storePublicApi
+      listeners: new Set(),
+      getterCache: new Map(),
+      getterDependencies: new Map(),
+      subscribers: new Map(),
+      createStoreProxy: (_onAccess?: (path: string[]) => void) => storePublicApi as any
     }
-    scope = localScope
+    pinia._scopes.set(id, localScope)
 
     const isGetterComputing = new Set<string>()
 
     const emit = (nextState: S, oldState: S, patches: Patch[]) => {
-      scope!.listeners.forEach((fn) => fn(nextState, oldState, patches))
+      localScope.listeners.forEach((fn) => fn(nextState, oldState, patches))
+
+      localScope.subscribers.forEach((getterKeys, storeId) => {
+        const subscriberScope = pinia._scopes.get(storeId)
+        if (!subscriberScope) return
+        let shouldNotify = false
+        getterKeys.forEach((key) => {
+          if (subscriberScope.getterCache.has(key)) {
+            subscriberScope.getterCache.delete(key)
+            shouldNotify = true
+          }
+        })
+        if (shouldNotify) {
+          const oldSubState = subscriberScope.currentState
+          const newSubState = { ...oldSubState }
+          subscriberScope.currentState = newSubState
+          pinia.state[storeId] = newSubState
+
+          subscriberScope.listeners.forEach((fn) => fn(newSubState, oldSubState, []))
+        }
+      })
     }
 
     const internalPatch = (updater: (draft: Draft<S>) => void | S, actionName: string, isReset = false) => {
       if (isTimeTraveling) return
 
-      const oldState = scope!.currentState
+      const oldState = localScope.currentState as S
       let patches: Patch[] = []
 
       const nextState = produce(oldState, updater as any, (p) => {
@@ -83,7 +129,7 @@ export function defineStore<
       }) as S
 
       if (patches.length > 0 || isReset) {
-        scope!.currentState = nextState
+        localScope.currentState = nextState
         pinia.state[id] = nextState
         if (devTools) {
           devTools.send({ type: actionName, payload: patches }, nextState)
@@ -101,21 +147,20 @@ export function defineStore<
     const $reset = () => internalPatch(() => options.state(), '@reset', true)
 
     const $subscribe = (callback: SubscriptionCallback<S>) => {
-      const listener = (state: S, prev: S) => callback(state, prev)
-      scope!.listeners.add(listener)
-      return () => scope!.listeners.delete(listener)
+      const listener = (state: S, prev: S, patches: Patch[]) => callback(state, prev, patches)
+      localScope.listeners.add(listener as any)
+      return () => localScope.listeners.delete(listener as any)
     }
 
-    const getters = options.getters || ({} as G)
-
     const getterInvalidationListener = (_state: S, _prevState: S, patches: Patch[]) => {
-      scope!.getterDependencies.forEach((deps, getterName) => {
-        if (isAffected(patches, deps)) {
-          scope!.getterCache.delete(getterName)
+      localScope.getterDependencies.forEach((_deps, getterName) => {
+        const resolvedDeps = resolveGetterDependencies(getterName, localScope.getterDependencies)
+        if (isAffected(patches, resolvedDeps)) {
+          localScope.getterCache.delete(getterName)
         }
       })
     }
-    scope.listeners.add(getterInvalidationListener)
+    localScope.listeners.add(getterInvalidationListener as any)
 
     const originalActions = options.actions || ({} as A)
     const wrappedActions = {} as TransformActions<A>
@@ -127,18 +172,16 @@ export function defineStore<
         return false
       }
 
-      const createStateProxy = (stateTarget: any, path: string[], dependencies?: Set<string>): any => {
+      const createStateProxy = (stateTarget: any, path: string[], onDeepAccess?: (path: string[]) => void): any => {
         return new Proxy(stateTarget, {
           get(obj, key) {
             if (typeof key === 'symbol') return Reflect.get(obj, key)
             const currentPath = [...path, String(key)]
-            dependencies?.add(currentPath.join('.'))
-            onAccess?.(currentPath)
-
             const value = Reflect.get(obj, key)
             if (typeof value === 'object' && value !== null) {
-              return createStateProxy(value, currentPath, dependencies)
+              return createStateProxy(value, currentPath, onDeepAccess)
             }
+            onDeepAccess?.(currentPath)
             return value
           },
           set: readonlyWarning
@@ -149,21 +192,24 @@ export function defineStore<
         get(_target, key, receiver) {
           const strKey = String(key)
 
-          if (strKey === '$state') return scope!.currentState
+          if (strKey === '$state') return localScope.currentState
           if (strKey === '$patch') return $patch
           if (strKey === '$reset') return $reset
           if (strKey === '$subscribe') return $subscribe
 
-          const state = scope!.currentState
+          const state = localScope.currentState
           if (strKey in state) {
-            onAccess?.([strKey])
             const value = state[strKey]
-            return typeof value === 'object' && value !== null ? createStateProxy(value, [strKey]) : value
+            if (typeof value === 'object' && value !== null) {
+              return createStateProxy(value, [strKey], onAccess)
+            }
+            onAccess?.([strKey])
+            return value
           }
 
           if (strKey in getters) {
             onAccess?.([strKey])
-            if (scope!.getterCache.has(strKey)) return scope!.getterCache.get(strKey)
+            if (localScope.getterCache.has(strKey)) return localScope.getterCache.get(strKey)
             if (isGetterComputing.has(strKey)) {
               console.warn(`[pinia-react] Circular dependency detected in getter "${strKey}"`)
               return undefined
@@ -171,23 +217,27 @@ export function defineStore<
 
             isGetterComputing.add(strKey)
             const dependencies = new Set<string>()
+            const prevListenerId = activeListenerId
+            const prevGetterKey = activeGetterKey
+            activeListenerId = id
+            activeGetterKey = strKey
 
-            const trackingProxyForThis = createStoreProxy((path) => {
-              const topKey = path[0]
-              if (topKey in getters) {
-                const nestedDeps = scope!.getterDependencies.get(topKey)
-                if (nestedDeps) nestedDeps.forEach((dep) => dependencies.add(dep))
-              } else {
-                dependencies.add(path.join('.'))
+            try {
+              const onGetterAccess = (path: string[]) => {
+                dependencies.add(path[0])
               }
-            })
+              const trackingProxyForThis = createStoreProxy(onGetterAccess)
+              const trackingStateProxy = createStateProxy(state, [], onGetterAccess)
+              const result = (getters as any)[strKey].call(trackingProxyForThis, trackingStateProxy)
 
-            const trackingStateProxy = createStateProxy(state, [], dependencies)
-            const result = (getters as any)[strKey].call(trackingProxyForThis, trackingStateProxy)
-            isGetterComputing.delete(strKey)
-            scope!.getterDependencies.set(strKey, dependencies)
-            scope!.getterCache.set(strKey, result)
-            return result
+              localScope.getterDependencies.set(strKey, dependencies)
+              localScope.getterCache.set(strKey, result)
+              return result
+            } finally {
+              activeListenerId = prevListenerId
+              activeGetterKey = prevGetterKey
+              isGetterComputing.delete(strKey)
+            }
           }
 
           if (strKey in wrappedActions) {
@@ -198,16 +248,13 @@ export function defineStore<
         },
         set(_target, key, value, receiver) {
           const strKey = String(key)
-
           if (strKey === '$state') {
             console.warn(`[${id}] Do not replace "$state" directly. Use "$patch()" to replace the whole state.`)
             return false
           }
-
-          if (strKey in scope!.currentState || strKey in getters || strKey in wrappedActions) {
+          if (strKey in localScope.currentState || strKey in getters || strKey in wrappedActions) {
             return readonlyWarning()
           }
-
           return Reflect.set(_target, key, value, receiver)
         }
       }) as Store<Id, S, G, A>
@@ -217,7 +264,6 @@ export function defineStore<
 
     Object.keys(originalActions).forEach((actionName) => {
       const originalAction = (originalActions as any)[actionName]
-
       ;(wrappedActions as any)[actionName] = (...args: any[]) => {
         let returnValue: any
         const recipe = (draft: Draft<S>) => {
@@ -239,7 +285,7 @@ export function defineStore<
       }
     })
 
-    scope.createStoreProxy = createStoreProxy
+    localScope.createStoreProxy = createStoreProxy as any
 
     pinia._p.forEach((plugin) => {
       const pluginResult = plugin({ id, store: storePublicApi, options } as PiniaPluginContext)
@@ -252,15 +298,15 @@ export function defineStore<
 
     if (typeof window !== 'undefined' && (window as any).__REDUX_DEVTOOLS_EXTENSION__) {
       devTools = (window as any).__REDUX_DEVTOOLS_EXTENSION__.connect({ name: id })
-      devTools.init(scope.currentState)
+      devTools.init(localScope.currentState)
       devTools.subscribe((message: any) => {
         if (message.type === 'DISPATCH' && message.state) {
           const newState = JSON.parse(message.state)
           isTimeTraveling = true
-          const oldState = scope!.currentState
-          scope!.currentState = newState
+          const oldState = localScope.currentState as S
+          localScope.currentState = newState
           pinia.state[id] = newState
-          scope!.getterCache.clear()
+          localScope.getterCache.clear()
           emit(newState, oldState, [])
           isTimeTraveling = false
         }
@@ -272,15 +318,32 @@ export function defineStore<
 
   function getStore(): Store<Id, S, G, A> {
     const pinia = getActivePinia()
+
     if (!pinia._s.has(id)) {
       createStoreInstance()
     }
+
+    if (activeListenerId && activeGetterKey && activeListenerId !== id) {
+      const accessedStoreScope = pinia._scopes.get(id)
+      if (accessedStoreScope) {
+        let subscribers = accessedStoreScope.subscribers.get(activeListenerId)
+        if (!subscribers) {
+          subscribers = new Set()
+          accessedStoreScope.subscribers.set(activeListenerId, subscribers)
+        }
+        subscribers.add(activeGetterKey)
+      }
+    }
+
     return pinia._s.get(id) as Store<Id, S, G, A>
   }
 
   function useStore(): Store<Id, S, G, A> {
-    getStore()
-    const currentScope = scope!
+    const pinia = getActivePinia()
+    if (!pinia._s.has(id)) {
+      createStoreInstance()
+    }
+    const currentScope = pinia._scopes.get(id)!
 
     const trackedPaths = useRef(new Set<string>())
     trackedPaths.current.clear()
@@ -288,36 +351,29 @@ export function defineStore<
     const subscribe = useCallback(
       (onStoreChange: () => void) => {
         const listener = (_state: S, _prevState: S, patches: Patch[]) => {
-          if (patches.length === 0) {
-            onStoreChange()
-            return
-          }
           let shouldUpdate = false
-          const getters = options.getters || {}
           for (const path of trackedPaths.current) {
-            const pathSet = new Set<string>()
             const topKey = path.split('.')[0]
             if (topKey in getters) {
-              const deps = currentScope.getterDependencies.get(topKey)
-              if (deps) {
-                deps.forEach((dep) => pathSet.add(dep))
+              if (!currentScope.getterCache.has(topKey)) {
+                shouldUpdate = true
+                break
               }
             } else {
-              pathSet.add(path)
-            }
-            if (isAffected(patches, pathSet)) {
-              shouldUpdate = true
-              break
+              if (patches.length > 0 && isAffected(patches, new Set([path]))) {
+                shouldUpdate = true
+                break
+              }
             }
           }
           if (shouldUpdate) {
             onStoreChange()
           }
         }
-        currentScope.listeners.add(listener)
-        return () => currentScope.listeners.delete(listener)
+        currentScope.listeners.add(listener as any)
+        return () => currentScope.listeners.delete(listener as any)
       },
-      [options, currentScope]
+      [currentScope]
     )
 
     const getSnapshot = useCallback(() => currentScope.currentState, [currentScope])
@@ -328,7 +384,7 @@ export function defineStore<
       trackedPaths.current.add(path.join('.'))
     })
 
-    return trackingProxy
+    return trackingProxy as Store<Id, S, G, A>
   }
 
   return { useStore, getStore }

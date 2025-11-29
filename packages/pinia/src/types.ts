@@ -1,4 +1,4 @@
-import type { Draft } from 'immer'
+import type { Draft, Patch } from 'immer'
 
 export type StateTree = Record<string, any>
 
@@ -8,7 +8,7 @@ export type TransformGetters<G> = {
 
 export type TransformActions<A> = A
 
-export type SubscriptionCallback<S> = (state: S, prevState: S) => void
+export type SubscriptionCallback<S> = (state: S, prevState: S, patches: Patch[]) => void
 
 export interface PiniaCustomProperties<
   Id extends string = string,
@@ -47,11 +47,21 @@ export interface DefineStoreOptions<S extends StateTree, G extends Record<string
   actions?: A & ThisType<ActionContext<S, G, A>>
 }
 
+export type StoreScope = {
+  currentState: StateTree
+  listeners: Set<(state: any, prev: any, patches: Patch[]) => void>
+  getterCache: Map<string, any>
+  getterDependencies: Map<string, Set<string>>
+  subscribers: Map<string, Set<string>>
+  createStoreProxy: (onAccess?: (path: string[]) => void) => StoreGeneric
+}
+
 export interface Pinia {
   state: Record<string, StateTree>
   use(plugin: PiniaPlugin): Pinia
   _p: PiniaPlugin[]
   _s: Map<string, StoreGeneric>
+  _scopes: Map<string, StoreScope>
 }
 
 export interface PiniaPlugin {

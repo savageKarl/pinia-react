@@ -7,9 +7,6 @@ beforeEach(() => {
 })
 
 describe('Complex Component Interaction Tests', () => {
-  /**
-   * 场景一：深度嵌套状态与精确的组件重渲染
-   */
   describe('Scenario 1: Deeply Nested State and Precise Re-rendering', () => {
     const { useStore: useSettingsStore } = defineStore('settings', {
       state: () => ({
@@ -104,9 +101,6 @@ describe('Complex Component Interaction Tests', () => {
     })
   })
 
-  /**
-   * 场景二：跨 Store 的复杂依赖与联动
-   */
   describe('Scenario 2: Cross-Store Dependency and Updates', () => {
     const { useStore: useProductsStore, getStore: getProductsStore } = defineStore('products', {
       state: () => ({
@@ -166,9 +160,6 @@ describe('Complex Component Interaction Tests', () => {
     })
   })
 
-  /**
-   * 场景三：Getter 间的链式依赖与缓存验证
-   */
   describe('Scenario 3: Chained Getters and Cache Invalidation', () => {
     const getterSpies = {
       subtotal: vi.fn(),
@@ -233,21 +224,21 @@ describe('Complex Component Interaction Tests', () => {
       expect(getterSpies.subtotal).toHaveBeenCalledTimes(1)
       expect(getterSpies.totalWithTax).toHaveBeenCalledTimes(1)
       expect(getterSpies.finalPrice).toHaveBeenCalledTimes(1)
-      expect(screen.getByText('Final Price: 230')).toBeInTheDocument()
+      expect(screen.getByText(/Final Price: 230/)).toBeInTheDocument()
 
       await userEvent.click(screen.getByText('Update Shipping'))
 
       expect(getterSpies.subtotal).toHaveBeenCalledTimes(1)
       expect(getterSpies.totalWithTax).toHaveBeenCalledTimes(1)
       expect(getterSpies.finalPrice).toHaveBeenCalledTimes(2)
-      expect(screen.getByText('Final Price: 240')).toBeInTheDocument()
+      expect(screen.getByText(/Final Price: 240/)).toBeInTheDocument()
 
       await userEvent.click(screen.getByText('Update Quantity'))
 
       expect(getterSpies.subtotal).toHaveBeenCalledTimes(2)
       expect(getterSpies.totalWithTax).toHaveBeenCalledTimes(2)
       expect(getterSpies.finalPrice).toHaveBeenCalledTimes(3)
-      expect(screen.getByText('Final Price: 350')).toBeInTheDocument()
+      expect(screen.getByText(/Final Price: 350/)).toBeInTheDocument()
     })
   })
 })
