@@ -1,5 +1,7 @@
+'use client'
+
 import { defineStore } from 'pinia-react'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 
 export const { useStore } = defineStore('main', {
   state: () => ({
@@ -40,6 +42,11 @@ export const { useStore } = defineStore('main', {
 
 const DemoComponent = () => {
   const store = useStore()
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   React.useEffect(() => {
     const unsubscribe = store.$subscribe((state, prevState) => {
@@ -84,50 +91,23 @@ const DemoComponent = () => {
 
       <div className='card'>
         <h2>Plugin Demo (localStorage Persistence)</h2>
-        <p>
-          Is State Persisted in localStorage? <strong>{store.$isPersisted.toString()}</strong>
-        </p>
-        <div className='button-group'>
-          <button onClick={() => store.save()}>Manual Save</button>
-          <button onClick={() => store.clearPersistence()}>Clear From Storage</button>
-        </div>
+        {isMounted ? (
+          <>
+            <p>
+              Is State Persisted in localStorage? <strong>{store.$isPersisted.toString()}</strong>
+            </p>
+            <div className='button-group'>
+              <button onClick={() => store.save()}>Manual Save</button>
+              <button onClick={() => store.clearPersistence()}>Clear From Storage</button>
+            </div>
+          </>
+        ) : (
+          <p>Checking persistence status...</p>
+        )}
         <p style={{ fontSize: '0.9em', color: '#666' }}>
           (Note: State also saves automatically on any change. Try refreshing the page.)
         </p>
       </div>
-
-      <style>{`
-        .card {
-          border: 1px solid #e0e0e0;
-          border-radius: 8px;
-          padding: 1.5rem;
-          margin-bottom: 1.5rem;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .button-group {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.75rem;
-        }
-        button {
-          padding: 0.5rem 1rem;
-          border-radius: 6px;
-          border: 1px solid #ccc;
-          background-color: #f0f0f0;
-          cursor: pointer;
-          font-size: 1rem;
-        }
-        button:hover {
-          background-color: #e0e0e0;
-        }
-        pre {
-          background-color: #f5f5f5;
-          padding: 1rem;
-          border-radius: 4px;
-          white-space: pre-wrap;
-          word-break: break-all;
-        }
-      `}</style>
     </div>
   )
 }
