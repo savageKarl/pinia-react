@@ -1,6 +1,6 @@
 {
   "name": "pinia-react",
-  "version": "1.5.2-beta.6",
+  "version": "1.5.2",
   "description": "Intuitive, type safe and flexible Store for React",
   "type": "module",
   "main": "./dist/index.js",
@@ -36,7 +36,6 @@
     "playground-react": "vite playground/react",
     "playground-nextjs": "pnpm next dev ./playground/nextjs",
     "test": "vitest",
-    "release": "release-it",
     "test-dts": "tsc -p ./test-dts/tsconfig.json"
   },
   "keywords": [
