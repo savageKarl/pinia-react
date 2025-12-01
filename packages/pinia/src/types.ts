@@ -8,7 +8,7 @@ export type TransformGetters<G> = {
 
 export type TransformActions<A> = A
 
-export type SubscriptionCallback<S> = (state: S, prevState: S, patches: Patch[]) => void
+export type SubscriptionCallback<S> = (state: S, prevState: S) => void
 
 export interface PiniaCustomProperties<
   Id extends string = string,
