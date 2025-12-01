@@ -1,64 +1,71 @@
-name: Release and Sync
+# .github/workflows/release.yml
+# 2025 年终极 Changesets 发版工作流（pinia-react 专用）
+name: Release
 
+# 关键变化：只监听 v* tag，不再监听 push main/dev
 on:
   push:
-    branches:
-      - main
-      - dev
+    tags:
+      - "v*"
+
+permissions:
+  contents: write      # 用于 checkout + git tag
+  pull-requests: write # 用于 GitHub Release（可选）
+  id-token: write      # 支持 workload identity（推荐）
 
 jobs:
-  release:
+  publish:
+    name: Build, Test & Publish
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0        # Changesets 需要完整历史来计算版本
           fetch-tags: true
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          bun-version: latest
-      
-      - name: Configure Git
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          version: 9
 
-      - name: Setup Bun cache
-        uses: actions/cache@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
 
-      - name: Install Dependencies
-        run: bun install --frozen-lockfile
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Run Lint & Format & Test Check
-        run: bun run check && bun run test
+      - name: Lint & Type Check
+        run: pnpm run check
+
+      - name: Run tests
+        run: pnpm run test
 
       - name: Build
-        run: bun run build
+        run: pnpm run build
 
-      - name: Setup .npmrc for publishing
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-
-      - name: Run release-it
-        id: release
+      - name: Publish to npm
+        run: npx changeset publish
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_FOR_ACTIONS }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            bun run --filter pinia-react release --ci
-          else
-            bun run --filter pinia-react release --ci --preRelease=beta
-          fi
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # 如果你用的是 GitHub Packages，可以改成 GITHUB_TOKEN
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-beta')
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+      - name: Create GitHub Pre-release (for beta)
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-beta')
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: true
