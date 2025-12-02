@@ -1,6 +1,6 @@
 {
   "name": "pinia-react",
-  "version": "1.5.2",
+  "version": "2.0.0",
   "description": "Intuitive, type safe and flexible Store for React",
   "type": "module",
   "main": "./dist/index.js",
