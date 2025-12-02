@@ -8,5 +8,5 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   dts: true,
-  external: ['@maoism/runtime-core']
+  external: ['immer']
 })

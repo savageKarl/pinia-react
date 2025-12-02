@@ -18,22 +18,22 @@ hero:
     src: /rspress-icon.png
     alt: Logo
 features:
-  - title: Pinia-style Reactivity
-    details: Built on Pinia's reactive core (Vue3 reactivity), automatically tracks state dependencies and updates only necessary components.
+  - title: Automatic Render Optimization
+    details: Automatically tracks state dependencies, ensuring components re-render only when the data they use actually changes.
     icon: 🔄
   - title: 'React Concurrent Rendering Support'
-    details: Ensure seamless compatibility with React 18\'s concurrent features through `useSyncExternalStore`.
+    details: Ensure seamless compatibility with React 18's concurrent features through `useSyncExternalStore`.
     icon: ⚡️
-  - title: Modular Design
-    details: Inherits Pinia\'s modular design, supporting the construction of multiple Stores.
-    icon: 🛠
+  - title: Developer Friendly
+    details: Built-in Redux DevTools support for seamless debugging, including state inspection and time-travel.
+    icon: 🕵️
   - title: TypeScript Friendly
     details: Built-in type inference for complete type safety without additional configuration.
     icon: 🔍
   - title: Plugin System
     details: Support extensions like persistence and logging to easily customize Store behavior.
     icon: 🧩
-  - title: Pinia API Compatible
-    details: Follows Pinia\'s API design for quick onboarding by Vue developers and easy adaptation by React developers.
-    icon: 🔀
+  - title: Modular Design
+    details: Inherits Pinia's modular design, allowing you to organize your state into multiple manageable Stores.
+    icon: 🛠
 ---

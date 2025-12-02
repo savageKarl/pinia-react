@@ -108,6 +108,39 @@ const DemoComponent = () => {
           (Note: State also saves automatically on any change. Try refreshing the page.)
         </p>
       </div>
+
+      <style>{`
+        .card {
+          border: 1px solid #e0e0e0;
+          border-radius: 8px;
+          padding: 1.5rem;
+          margin-bottom: 1.5rem;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .button-group {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.75rem;
+        }
+        button {
+          padding: 0.5rem 1rem;
+          border-radius: 6px;
+          border: 1px solid #ccc;
+          background-color: #f0f0f0;
+          cursor: pointer;
+          font-size: 1rem;
+        }
+        button:hover {
+          background-color: #e0e0e0;
+        }
+        pre {
+          background-color: #f5f5f5;
+          padding: 1rem;
+          border-radius: 4px;
+          white-space: pre-wrap;
+          word-break: break-all;
+        }
+      `}</style>
     </div>
   )
 }

@@ -2,23 +2,19 @@
   "name": "@pinia-react/root",
   "type": "module",
   "private": true,
-  "workspaces": [
-    "packages/*",
-    "packages/playground/*"
-  ],
   "scripts": {
     "prepare": "npx simple-git-hooks",
-    "dev": "bun --filter pinia-react dev",
-    "build": "bun --filter pinia-react build",
-    "playground-react": "bun --filter playground-react dev",
-    "playground-nextjs": "bun --filter playground-nextjs dev",
+    "dev": "pnpm --filter pinia-react dev",
+    "build": "pnpm --filter pinia-react build",
+    "playground-react": "pnpm --filter playground-react dev",
+    "playground-nextjs": "pnpm --filter playground-nextjs dev",
     "test": "vitest run",
-    "test-dts": "bun --filter pinia-react test-dts",
+    "test-dts": "pnpm --filter pinia-react test-dts",
     "check": "biome check",
     "format": "biome check --write",
-    "docs-dev": "bun --filter docs dev",
-    "docs-build": "bun --filter docs build",
-    "docs-preview": "bun --filter docs preview"
+    "docs-dev": "pnpm --filter docs dev",
+    "docs-build": "pnpm --filter docs build",
+    "docs-preview": "pnpm --filter docs preview"
   },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged",
@@ -38,7 +34,6 @@
     "@biomejs/biome": "2.2.0",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@release-it/conventional-changelog": "^10.0.1",
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
@@ -48,11 +43,13 @@
     "jsdom": "^26.1.0",
     "lint-staged": "^16.2.1",
     "npm-run-all": "^4.1.5",
-    "release-it": "^19.0.5",
     "simple-git-hooks": "^2.13.1",
     "tsup": "^8.5.0",
     "typescript": "^5.8.3",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@changesets/cli": "^2.29.8"
   }
 }

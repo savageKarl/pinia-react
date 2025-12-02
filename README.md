@@ -1,114 +1,182 @@
 # pinia-react
 
-[](https://www.npmjs.com/package/pinia-react)
-[](https://github.com/savageKarl/pinia-react/blob/main/LICENSE)
+`pinia-react` is a lightweight, type-safe state management library for React. It combines the developer experience of Pinia (Vue) with the power of **Immer** and **React Hooks**.
 
-`pinia-react` is a state management library for React, inspired by Vue's Pinia. It is built upon Pinia's core logic and integrates seamlessly with React Hooks and `useSyncExternalStore` to deliver a concise, reactive, and TypeScript-friendly state management experience.
+Key features:
+- **Reactive**: Built on `useSyncExternalStore` for concurrent rendering support.
+- **Efficient**: Fine-grained dependency tracking. Components only re-render when used properties change.
+- **Intuitive**: Write actions with mutable syntax (thanks to Immer) but get immutable state updates.
+- **DevTools**: Integrated with Redux DevTools Extension.
 
-For more details, please refer to the [pinia-react documentation](https://savagekarl.github.io/pinia-react).
-
-## Overview
-
-### Motivation
-
-Pinia is a highly acclaimed state management library in the Vue ecosystem, celebrated for its modular design and elegant API. `pinia-react` brings Pinia's core philosophy and parts of its implementation to the React ecosystem. By combining it with React Hooks and `useSyncExternalStore`, it offers a lightweight, intuitive, and TypeScript-friendly solution, especially suited for modern React projects that require reactive state management.
-
-### Features
-
-  - 🔄 **Pinia-Style Reactivity**: Built on Pinia's reactive core (from Vue 3's reactivity system), it automatically tracks state dependencies and updates only the necessary components.
-  - ⚡️ **React Concurrent Rendering Support**: Ensures seamless compatibility with React 18's concurrent features through the use of `useSyncExternalStore`.
-  - 🛠 **Modular Stores**: Adopts Pinia's modular design, supporting dynamic store registration, making it ideal for large-scale applications.
-  - 🔍 **TypeScript Friendly**: Provides excellent type inference out-of-the-box, ensuring full type safety without extra configuration.
-  - 🧩 **Plugin System**: Supports extensions like state persistence and logging, allowing for easy customization of store behavior.
-  - 🔀 **Pinia API Compatibility**: Utilizes Pinia's API design, enabling a smooth transition for Vue developers and an easy learning curve for React developers.
-
-## Quick Start
-
-### Requirements
-
-  - React 18+
-  - ES6+
-
-### Installation
+## Installation
 
 ```bash
 pnpm add pinia-react
 ```
 
-### Usage Example
+## Quick Start
+
+### 1. Initialize Pinia
+
+Call `createPinia()` once in your application entry point to initialize the global store registry.
 
 ```tsx
-import { createPinia, defineStore } from 'pinia-react'
-import { useEffect } from 'react'
+// src/main.tsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { createPinia } from 'pinia-react'
+import App from './App'
 
-// Initialize Pinia (API is identical to Pinia)
-const pinia = createPinia();
+// ⚠️ Required: Initialize the global pinia instance before rendering
+createPinia()
 
-// Define a store (using Pinia's defineStore API)
-const useCounterStore = defineStore('counter', {
-  // Define the initial state
-  state: () => ({
-    count: 0,
-    name: 'Counter'
-  }),
-  
-  // Define getters
-  getters: {
-    doubleCount() {
-      return this.count * 2 // A Pinia-style getter
-    }
-  },
-  
-  // Define actions
-  actions: {
-    increment() {
-      this.count++
-    },
-    
-    async fetchSomething() {
-      // Asynchronous operations are supported
-      const result = await api.get('/data')
-      this.count = result.count
-    }
-  }
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)
+```
+
+### 2. Define a Store
+
+`defineStore` returns an object containing hooks and getters.
+
+```ts
+// src/stores/counter.ts
+import { defineStore } from 'pinia-react'
+
+// Return value is { useStore, getStore }
+export const counterStoreDefinition = defineStore('counter', {
+  // State: Initial state factory
+  state: () => ({
+    count: 0,
+    name: 'Pinia'
+  }),
+
+  // Getters: Computed values
+  getters: {
+    doubleCount() {
+      // `this` refers to the store instance
+      return this.count * 2
+    }
+  },
+
+  // Actions: Methods to modify state
+  actions: {
+    increment() {
+      // `this` is an Immer draft, so you can mutate it directly!
+      this.count++
+    },
+    async renameAsync(newName: string) {
+      // Async is supported
+      await new Promise(r => setTimeout(r, 500))
+      this.name = newName
+    }
+  }
 })
 
-// Use the store in a component
-function Counter() {
-  // Get the store instance
-  const store = useCounterStore()
-  
-  useEffect(() => {
-    // You can call actions
-    store.fetchSomething()
-  }, [])
-  
-  return (
-    <div>
-      <h1>{store.name}: {store.count}</h1>
-      <p>Double count: {store.doubleCount}</p>
-      <button onClick={() => store.increment()}>Increment</button>
-    </div>
-  )
+// Export the hook for convenience
+export const useCounterStore = counterStoreDefinition.useStore
+```
+
+### 3. Use in Components
+
+```tsx
+import { useCounterStore } from '../stores/counter'
+
+export function Counter() {
+  // The store object is a Proxy that tracks property access
+  const store = useCounterStore()
+
+  return (
+    <div>
+      {/* Re-renders ONLY when count changes */}
+      <p>Count: {store.count}</p>
+      
+      {/* Re-renders ONLY when doubleCount changes */}
+      <p>Double: {store.doubleCount}</p>
+
+      {/* Trigger actions */}
+      <button onClick={() => store.increment()}>+1</button>
+      
+      {/* ⚠️ Store properties are Read-Only in components. 
+          store.count++ // This will warn and fail. 
+          Use actions or $patch instead. 
+      */}
+    </div>
+  )
 }
 ```
 
-For more advanced usage, such as plugins or using the store outside of components, please see the [documentation](https://savagekarl.github.io/pinia-react).
+## Core API
 
-## FAQ
+### `$patch`
 
-### What is the relationship between `pinia-react` and Pinia?
+Allows you to update multiple state properties at once using a callback function. The callback receives an Immer draft.
 
-`pinia-react` is an adaptation of Pinia for React. It is built upon parts of Pinia's core source code and has been optimized for the React ecosystem (for example, by using `useSyncExternalStore` to support concurrent rendering in React 18). We strictly adhere to Pinia's MIT License and have preserved the original author's copyright information in our license file.
+> **Note**: Unlike Vue's Pinia, this implementation only accepts a callback function, not an object.
 
-### What are the advantages of `pinia-react` compared to Zustand or Redux?
+```ts
+const store = useCounterStore()
 
-`pinia-react` combines Pinia's modular architecture with React's Hooks API, offering a more streamlined API and superior TypeScript support. It is an excellent choice for modern React applications that benefit from a reactive state management paradigm.
+store.$patch((state) => {
+  state.count += 10
+  state.name = 'Patched'
+})
+```
 
-## Acknowledgements
+### `$reset`
 
-`pinia-react` is based on parts of the source code from [Pinia](https://github.com/vuejs/pinia), adapted and optimized for the React ecosystem. In compliance with the MIT License, we have retained the copyright notice of Pinia's original author and extend our sincere gratitude to the Pinia project and its creator. This project also draws inspiration from the design philosophy of [Zustand](https://github.com/pmndrs/zustand).
+Resets the store state to its initial value (defined in the `state` function).
+
+```ts
+store.$reset()
+```
+
+### `$subscribe`
+
+Listen to state changes manually.
+
+```ts
+useEffect(() => {
+  const unsubscribe = store.$subscribe((newState, oldState) => {
+    console.log('State changed:', newState)
+  })
+  return unsubscribe
+}, [store])
+```
+
+### `getStore` (Usage Outside Components)
+
+If you need to access the store outside of a React Component (e.g., in a utility function or router), use `getStore`.
+
+```ts
+import { counterStoreDefinition } from './stores/counter'
+
+function logCount() {
+  // Retrieves the active store instance without using Hooks
+  const store = counterStoreDefinition.getStore()
+  console.log(store.count)
+}
+```
+
+## TypeScript
+
+Types are inferred automatically. No extra configuration is needed.
+
+```ts
+type CounterState = { count: number }
+
+export const useStore = defineStore('id', {
+  state: (): CounterState => ({ count: 0 }),
+  // ...
+}).useStore
+```
+
+## Documentation
+
+To learn more about Pinia-React, check [its documentation](https://savagekarl.github.io/pinia-react).
 
 ## License
 
-This project is licensed under the [MIT License](https://github.com/savageKarl/pinia-react/blob/main/LICENSE). As `pinia-react` is derived from parts of Pinia's source code, it strictly complies with its MIT License requirements and preserves the original author's copyright information. Please see the license file for more details.
+MIT

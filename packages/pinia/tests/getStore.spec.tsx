@@ -1,44 +1,58 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-
-import { createPinia, defineStore, setActivePinia } from 'pinia-react'
+import { createPinia, defineStore, setActivePinia } from '../src'
 
 beforeEach(() => {
   setActivePinia(createPinia())
 })
 
-describe('$getStore', () => {
-  const useStore = defineStore('aStore', {
-    state: () => ({ count: 0 })
+describe('getStore', () => {
+  const { useStore, getStore } = defineStore('main', {
+    state: () => ({ count: 0 }),
+    actions: {
+      increment() {
+        this.count++
+      }
+    }
   })
 
-  const increment = () => {
-    const store = useStore.$getStore()
-    store.count++
+  const incrementOutsideComponent = () => {
+    const store = getStore()
+    store.increment()
   }
 
-  const fn = vi.fn()
+  const renderFn = vi.fn()
 
-  function A() {
+  function TestComponent() {
     const store = useStore()
-    fn()
+    renderFn()
     return (
-      <>
+      <div>
         <h1>count: {store.count}</h1>
-        <button onClick={() => increment()}>add</button>
-      </>
+        <button onClick={incrementOutsideComponent}>Increment Outside</button>
+      </div>
     )
   }
 
-  test('should render correct number of times', async () => {
-    render(<A></A>)
-    const countText = screen.getByText(/0/)
-    expect(countText).toBeInTheDocument()
-    expect(fn).toHaveBeenCalledTimes(1)
+  test('updates component when state is changed via getStore from outside', async () => {
+    render(<TestComponent />)
+    expect(screen.getByText(/count: 0/)).toBeInTheDocument()
+    expect(renderFn).toHaveBeenCalledTimes(1)
 
     const button = screen.getByRole('button')
     await userEvent.click(button)
-    expect(screen.getByText(/1/)).toBeInTheDocument()
-    expect(fn).toHaveBeenCalledTimes(2)
+
+    expect(screen.getByText(/count: 1/)).toBeInTheDocument()
+    expect(renderFn).toHaveBeenCalledTimes(2)
+
+    await userEvent.click(button)
+
+    expect(screen.getByText(/count: 2/)).toBeInTheDocument()
+    expect(renderFn).toHaveBeenCalledTimes(3)
+  })
+
+  test('getStore throws if pinia is not active', () => {
+    setActivePinia(undefined as any)
+    expect(() => getStore()).toThrow(/getActivePinia was called with no active Pinia/)
   })
 })

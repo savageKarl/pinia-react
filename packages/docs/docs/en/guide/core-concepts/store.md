@@ -1,28 +1,28 @@
 # Defining a Store
 
-Before diving into core concepts, we need to know that a Store is defined using defineStore(), and its first parameter requires a unique name:
+A Store is defined using `defineStore()`. Its first parameter is a unique ID that Pinia uses to identify the store.
 
 ```tsx
 import { defineStore } from 'pinia-react'
 
-//  The naming of the return value of `defineStore()` is free
-// but it's best to include the store name and start with `use` and end with `Store`.
-// (like `useUserStore`, `useCartStore`, `useProductStore`)
-// The first parameter is the unique ID of the Store in your application.
-export const useAlertsStore = defineStore('alerts', {
+// `defineStore()` returns an object containing `useStore` and `getStore`.
+// It's a common pattern to export them for use throughout your application.
+const { useStore, getStore } = defineStore('alerts', {
   // Other configurations...
 })
+
+export const useAlertsStore = useStore
+export const getAlertsStore = getStore
 ```
 
-This name, which is also used as an id, must be passed in. Pinia will use it to connect to the store. To form a habit, name the returned function as use..., because it returns a hook.
+It's recommended to name the exported hook starting with `use` and ending with `Store` (e.g., `useUserStore`, `useCartStore`). This follows standard React Hook conventions.
 
-## Option Store 
+## Option Store
 
-Pass in an Option object with state, actions, and getters properties
-
+You define a store's configuration by passing an options object with `state`, `getters`, and `actions` properties.
 
 ```tsx
-export const useCounterStore = defineStore('counter', {
+export const { useStore: useCounterStore, getStore: getCounterStore } = defineStore('counter', {
   state: () => ({ count: 0, name: 'Eduardo' }),
   getters: {
     doubleCount: (state) => state.count * 2,
@@ -35,17 +35,15 @@ export const useCounterStore = defineStore('counter', {
 })
 ```
 
+## Using the Store
 
-## Using the Store 
-
-After defining the store, simply import and use it in your component.
+After defining the store, simply import and call its hook in your component.
 
 ```tsx
 import React from 'react';
 import { useCounterStore } from './counterStore';
 
 export function App() {
-  // You can access the variable `store` anywhere inside the component ✨
   const counter = useCounterStore();
 
   return (
@@ -54,5 +52,4 @@ export function App() {
     </div>
   );
 }
-```
 ```

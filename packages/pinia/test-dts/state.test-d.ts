@@ -1,89 +1,55 @@
-import { computed, type Ref, ref, shallowRef } from '@maoism/runtime-core'
-import { defineStore, expectType } from '.'
+import type { Draft } from 'immer'
+import { defineStore, expectType, type TypeEqual } from '.'
 
-const name = ref('Eduardo')
-const counter = ref(0)
-const double = computed({
-  get: () => counter.value * 2,
-  set(val) {
-    counter.value = val / 2
-  }
-})
-const nestedRef = ref({ a: ref(0) })
-
-const useStore = defineStore('name', {
+const { useStore, getStore } = defineStore('main', {
   state: () => ({
-    n: 0,
-    name,
-    double,
-    counter,
-    aRef: ref(0),
-    aShallowRef: shallowRef({ msg: 'hi' }),
-    anotherShallowRef: shallowRef({ aRef: ref('hello') }),
-    nestedRef
+    count: 0,
+    name: 'Eduardo',
+    items: [] as { id: number }[]
   }),
 
   getters: {
-    myDouble: (state) => {
-      expectType<number>(state.double)
-      expectType<number>(state.counter)
-      expectType<number>(state.nestedRef.a)
-      return state.n * 2
+    double: (state) => {
+      expectType<number>(state.count)
+      return state.count * 2
     },
-    other(): undefined {
+    upperName(): string {
       expectType<number>(this.double)
-      expectType<number>(this.counter)
-      return undefined
-    },
-
-    fromARef: (state) => state.aRef
+      return this.name.toUpperCase()
+    }
   },
 
   actions: {
-    some() {
-      expectType<number>(this.$state.double)
-      expectType<number>(this.$state.counter)
-      expectType<number>(this.double)
-      expectType<number>(this.counter)
-
-      this.$patch({ counter: 2 })
+    increment(amount: number = 1) {
+      this.count += amount
+    },
+    clear() {
       this.$patch((state) => {
-        expectType<number>(state.counter)
+        expectType<Draft<{ count: number; name: string; items: { id: number }[] }>>(state)
+        state.count = 0
+        state.items = []
       })
     }
   }
 })
 
-const store = useStore.$getStore()
+const store = getStore()
 
-store.$patch({ counter: 2 })
+expectType<number>(store.count)
+expectType<string>(store.name)
+
+expectType<number>(store.double)
+expectType<string>(store.upperName)
+
+expectType<(amount?: number) => void>(store.increment)
+
 store.$patch((state) => {
-  expectType<number>(state.counter)
+  state.count = 10
+  state.name = 'Patak'
 })
+expectType<number>(store.$state.count)
+store.$reset()
 
-expectType<number>(store.$state.counter)
-expectType<number>(store.$state.double)
-
-expectType<number>(store.aRef)
-expectType<number>(store.$state.aRef)
-expectType<number>(store.fromARef)
-
-expectType<{ msg: string }>(store.aShallowRef)
-expectType<{ msg: string }>(store.$state.aShallowRef)
-expectType<{ aRef: Ref<string> }>(store.anotherShallowRef)
-expectType<{ aRef: Ref<string> }>(store.$state.anotherShallowRef)
-
-const onlyState = defineStore('main', {
-  state: () => ({
-    // counter: 0,
-    // TODO: having only name fails...
-    name: 'hey',
-    some: 'hello'
-  })
-})()
-
-onlyState.$patch({ some: 'other' })
-onlyState.$patch((state) => {
-  expectType<string>(state.some)
-  expectType<string>(state.name)
-})
+type StoreFromGetStore = ReturnType<typeof getStore>
+type StoreFromUseStore = ReturnType<typeof useStore>
+expectType<TypeEqual<StoreFromGetStore, StoreFromUseStore>>(true)

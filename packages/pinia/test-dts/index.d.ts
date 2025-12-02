@@ -1,4 +1,3 @@
-// export * from '../dist/pinia'
 export * from '../src'
 
 export type TypeEqual<Target, Value> = (<T>() => T extends Target ? 1 : 2) extends <T>() => T extends Value ? 1 : 2

@@ -1,468 +1,435 @@
-import {
-  activeEffect,
-  type ComputedRef,
-  computed,
-  type DebuggerEvent,
-  type EffectScope,
-  effectScope,
-  markRaw,
-  nextTick,
-  ReactiveEffect,
-  reactive,
-  toRaw,
-  toRefs,
-  type UnwrapRef,
-  type WatchOptions,
-  watch
-} from '@maoism/runtime-core'
-import { useCallback, useEffect, useId, useRef, useSyncExternalStore } from 'react'
-import { activePinia, type Pinia, setActivePinia } from './rootStore'
-import { addSubscription, triggerSubscriptions } from './subscription'
-import {
-  type _ActionsTree,
-  type _DeepPartial,
-  type _GettersTree,
-  type _Method,
-  type _StoreWithState,
-  type DefineSetupStoreOptions,
-  type DefineStoreOptions,
-  type DefineStoreOptionsInPlugin,
-  type Fn,
-  MutationType,
-  type StateTree,
-  type Store,
-  type StoreDefinition,
-  type StoreOnActionListener,
-  type SubscriptionCallback,
-  type SubscriptionCallbackMutation
+import { type Draft, enablePatches, type Patch, produce, setAutoFreeze } from 'immer'
+import { useCallback, useRef, useSyncExternalStore } from 'react'
+import { getActivePinia } from './rootStore'
+import type {
+  DefineStoreOptions,
+  PiniaPluginContext,
+  StateTree,
+  Store,
+  StoreDefinition,
+  StoreScope,
+  SubscriptionCallback,
+  TransformActions
 } from './types'
-import { mergeReactiveObjects, noop } from './utils'
 
-type _SetType<AT> = AT extends Set<infer T> ? T : never
-/**
- * Marks a function as an action for `$onAction`
- * @internal
- */
-const ACTION_MARKER = Symbol()
-/**
- * Action name symbol. Allows to add a name to an action after defining it
- * @internal
- */
-const ACTION_NAME = Symbol()
-/**
- * Function type extended with action markers
- * @internal
- */
-interface MarkedAction<Fn extends _Method = _Method> {
-  (...args: Parameters<Fn>): ReturnType<Fn>
-  [ACTION_MARKER]: boolean
-  [ACTION_NAME]: string
-}
+enablePatches()
+setAutoFreeze(false)
 
-const { assign } = Object
+let activeListenerId: string | null = null
+let activeGetterKey: string | null = null
 
-function createOptionsStore<Id extends string, S extends StateTree, G extends _GettersTree<S>, A extends _ActionsTree>(
-  id: Id,
-  options: DefineStoreOptions<Id, S, G, A>,
-  pinia: Pinia
-): Store<Id, S, G, A> {
-  const { state, actions, getters } = options
+function isAffected(patches: Patch[], trackedPaths: Set<string>): boolean {
+  if (trackedPaths.size === 0) return false
+  const tracked = Array.from(trackedPaths).map((p) => p.split('.'))
 
-  const initialState: StateTree | undefined = pinia.state.value[id]
-
-  let store: Store<Id, S, G, A>
-
-  function setup() {
-    if (!initialState) {
-      pinia.state.value[id] = state ? state() : {}
-    }
-
-    const localState = toRefs(pinia.state.value[id])
-
-    return assign(
-      localState,
-      actions,
-      Object.keys(getters || {}).reduce(
-        (computedGetters, name) => {
-          if (name in localState) {
-            console.warn(
-              `[🍍]: A getter cannot have the same name as another state property. Rename one of them. Found with "${name}" in store "${id}".`
-            )
-          }
-
-          computedGetters[name] = markRaw(
-            computed(() => {
-              setActivePinia(pinia)
-              // it was created just before
-              const store = pinia._s.get(id)!
-              // @ts-expect-error
-              return getters![name].call(store, store)
-            })
-          )
-          return computedGetters
-        },
-        {} as Record<string, ComputedRef>
-      )
-    )
-  }
-
-  store = createSetupStore(id, setup, options, pinia)
-
-  return store as any
-}
-
-function createSetupStore<
-  Id extends string,
-  SS extends Record<any, unknown>,
-  S extends StateTree,
-  G extends Record<string, _Method>,
-  A extends _ActionsTree
->(
-  $id: Id,
-  setup: (helpers: SetupStoreHelpers) => SS,
-  options: DefineSetupStoreOptions<Id, S, G, A> | DefineStoreOptions<Id, S, G, A> = {},
-  pinia: Pinia
-): Store<Id, S, G, A> {
-  let scope!: EffectScope
-
-  const optionsForPlugin: DefineStoreOptionsInPlugin<Id, S, G, A> = assign({ actions: {} as A }, options)
-
-  const $subscribeOptions: WatchOptions = { deep: true }
-
-  // internal state
-  let isListening: boolean // set to true at the end
-  let isSyncListening: boolean // set to true at the end
-  const subscriptions: Set<SubscriptionCallback<S>> = new Set()
-  const actionSubscriptions: Set<StoreOnActionListener<Id, S, G, A>> = new Set()
-  const debuggerEvents: DebuggerEvent[] | DebuggerEvent = []
-  // const initialState = pinia.state.value[$id] as UnwrapRef<S> | undefined
-
-  let activeListener: symbol | undefined
-  function $patch(stateMutation: (state: UnwrapRef<S>) => void): void
-  function $patch(partialState: _DeepPartial<UnwrapRef<S>>): void
-  function $patch(partialStateOrMutator: _DeepPartial<UnwrapRef<S>> | ((state: UnwrapRef<S>) => void)): void {
-    let subscriptionMutation: SubscriptionCallbackMutation<S>
-    isListening = isSyncListening = false
-    // reset the debugger events since patches are sync
-    /* istanbul ignore else */
-    // if (__DEV__) {
-    //   debuggerEvents = []
-    // }
-    if (typeof partialStateOrMutator === 'function') {
-      partialStateOrMutator(pinia.state.value[$id] as UnwrapRef<S>)
-      subscriptionMutation = {
-        type: MutationType.patchFunction,
-        storeId: $id,
-        events: debuggerEvents as DebuggerEvent[]
-      }
-    } else {
-      mergeReactiveObjects(pinia.state.value[$id], partialStateOrMutator)
-      subscriptionMutation = {
-        type: MutationType.patchObject,
-        payload: partialStateOrMutator,
-        storeId: $id,
-        events: debuggerEvents as DebuggerEvent[]
-      }
-    }
-    activeListener = Symbol()
-    const myListenerId = activeListener
-    nextTick().then(() => {
-      if (activeListener === myListenerId) {
-        isListening = true
-      }
-    })
-    isSyncListening = true
-    // because we paused the watcher, we need to manually call the subscriptions
-    triggerSubscriptions(subscriptions, subscriptionMutation, pinia.state.value[$id] as UnwrapRef<S>)
-  }
-
-  const $reset = function $reset(this: _StoreWithState<Id, S, G, A>) {
-    const { state } = options as DefineStoreOptions<Id, S, G, A>
-    const newState: _DeepPartial<UnwrapRef<S>> = state ? state() : {}
-    // we use a patch to group all changes into one single subscription
-    this.$patch(($state) => {
-      // @ts-expect-error: FIXME: shouldn't error?
-      assign($state, newState)
-    })
-  }
-
-  /**
-   * Helper that wraps function so it can be tracked with $onAction
-   * @param fn - action to wrap
-   * @param name - name of the action
-   */
-  const action = <Fn extends _Method>(fn: Fn, name: string = ''): Fn => {
-    if (ACTION_MARKER in fn) {
-      // we ensure the name is set from the returned function
-      ;(fn as unknown as MarkedAction<Fn>)[ACTION_NAME] = name
-      return fn
-    }
-
-    const wrappedAction = function (this: any) {
-      setActivePinia(pinia)
-      const args = Array.from(arguments)
-
-      const afterCallbackSet: Set<(resolvedReturn: any) => any> = new Set()
-      const onErrorCallbackSet: Set<(error: unknown) => unknown> = new Set()
-      function after(callback: _SetType<typeof afterCallbackSet>) {
-        afterCallbackSet.add(callback)
-      }
-      function onError(callback: _SetType<typeof onErrorCallbackSet>) {
-        onErrorCallbackSet.add(callback)
-      }
-
-      // @ts-expect-error
-      triggerSubscriptions(actionSubscriptions, {
-        args,
-        name: wrappedAction[ACTION_NAME],
-        store,
-        after,
-        onError
-      })
-
-      let ret: unknown
-      try {
-        ret = fn.apply(this && this.$id === $id ? this : store, args)
-        // handle sync errors
-      } catch (error) {
-        triggerSubscriptions(onErrorCallbackSet, error)
-        throw error
-      }
-
-      if (ret instanceof Promise) {
-        return ret
-          .then((value) => {
-            triggerSubscriptions(afterCallbackSet, value)
-            return value
-          })
-          .catch((error) => {
-            triggerSubscriptions(onErrorCallbackSet, error)
-            return Promise.reject(error)
-          })
-      }
-
-      // trigger after callbacks
-      triggerSubscriptions(afterCallbackSet, ret)
-      return ret
-    } as MarkedAction<Fn>
-
-    wrappedAction[ACTION_MARKER] = true
-    wrappedAction[ACTION_NAME] = name // will be set later
-
-    // @ts-expect-error: we are intentionally limiting the returned type to just Fn
-    // because all the added properties are internals that are exposed through `$onAction()` only
-    return wrappedAction
-  }
-
-  const partialStore = {
-    _p: pinia,
-    // _s: scope,
-    $id,
-    $onAction: addSubscription.bind(null, activeComponentCleanUp, actionSubscriptions),
-    $patch,
-    $reset,
-    $subscribe(callback, options = {}) {
-      const removeSubscription = addSubscription([[]], subscriptions, callback, options.detached, () => stopWatcher())
-      const stopWatcher = scope.run(() =>
-        watch(
-          () => pinia.state.value[$id] as UnwrapRef<S>,
-          (state) => {
-            if (options.flush === 'sync' ? isSyncListening : isListening) {
-              callback(
-                {
-                  storeId: $id,
-                  type: MutationType.direct,
-                  events: debuggerEvents as unknown as DebuggerEvent
-                },
-                state
-              )
-            }
-          },
-          assign({}, $subscribeOptions, options)
-        )
-      )!
-
-      return removeSubscription
-    }
-    // $dispose
-  } as _StoreWithState<Id, S, G, A>
-
-  const store: Store<Id, S, G, A> = reactive(partialStore) as unknown as Store<Id, S, G, A>
-
-  // store the partial store now so the setup of stores can instantiate each other before they are finished without
-  // creating infinite loops.
-  pinia._s.set($id, store as Store)
-
-  scope = effectScope()
-  const setupStore = scope.run(() => setup({ action }))
-
-  // overwrite existing actions to support $onAction
-  for (const key in setupStore) {
-    const prop = setupStore[key]
-
-    if (typeof prop === 'function') {
-      const actionValue = action(prop as _Method, key)
-      // this a hot module replacement store because the hotUpdate method needs
-      // @ts-expect-error
-      setupStore[key] = actionValue
-
-      // list actions so they can be used in plugins
-      // @ts-expect-error
-      optionsForPlugin.actions[key] = prop
-    }
-  }
-
-  assign(store, setupStore)
-  // allows retrieving reactive objects with `storeToRefs()`. Must be called after assigning to the reactive object.
-  // Make `storeToRefs()` work with `reactive()` #799
-  assign(toRaw(store), setupStore)
-
-  // use this instead of a computed with setter to be able to create it anywhere
-  // without linking the computed lifespan to wherever the store is first
-  // created.
-  Object.defineProperty(store, '$state', {
-    get: () => pinia.state.value[$id],
-    set: (state) => {
-      $patch(($state) => {
-        // @ts-expect-error: FIXME: shouldn't error?
-        assign($state, state)
-      })
-    }
-  })
-
-  // apply all plugins
-  pinia._p.forEach((extender) => {
-    assign(
-      store,
-      scope.run(() =>
-        extender({
-          store: store as Store,
-          pinia,
-          options: optionsForPlugin
-        })
-      )!
-    )
-  })
-
-  isListening = true
-  isSyncListening = true
-  return store
-}
-
-export interface SetupStoreHelpers {
-  /**
-   * Helper that wraps function so it can be tracked with $onAction when the
-   * action is called **within the store**. This helper is rarely needed in
-   * applications. It's intended for advanced use cases like Pinia Colada.
-   *
-   * @param fn - action to wrap
-   * @param name - name of the action. Will be picked up by the store at creation
-   */
-  action: <Fn extends _Method>(fn: Fn, name?: string) => Fn
-}
-
-const activeComponentCleanUp: [Fn[]] = [[]]
-
-/**
- * Creates a `useStore` function that retrieves the store instance
- *
- * @param id - id of the store (must be unique)
- * @param options - options to define the store
- */
-export function defineStore<
-  Id extends string,
-  S extends StateTree = {},
-  G extends _GettersTree<S> = {},
-  // cannot extends ActionsTree because we loose the typings
-  A /* extends ActionsTree */ = {}
->(id: Id, options: Omit<DefineStoreOptions<Id, S, G, A>, 'id'>): StoreDefinition<Id, S, G, A> {
-  const effectMap = new WeakMap<[string], ReactiveEffect>()
-  const subscribeMap = new WeakMap<[string], Fn>()
-  const cleanUpMap = new WeakMap<[string], Fn[]>()
-
-  function useStore(pinia?: Pinia | null): Store<Id, S, G, A> {
-    if (pinia) setActivePinia(pinia)
-    if (!activePinia) {
-      throw new Error(
-        `[🍍]: "getActivePinia()" was called but there was no active Pinia. Are you trying to use a store before calling "createPinia()"?\n`
-      )
-    }
-    pinia = activePinia!
-
-    const lastEffect = activeEffect.value
-    activeEffect.value = undefined
-
-    if (!pinia._s.has(id)) createOptionsStore(id, options as any, pinia)
-    activeEffect.value = lastEffect
-
-    const store = pinia._s.get(id)!
-    const _id = useRef<[string]>([useId()])
-    const storeSnapshotRef = useRef({ ...store })
-    const isCollectDep = useRef(false)
-
-    if (!cleanUpMap.get(_id.current)) {
-      cleanUpMap.set(_id.current, [])
-    }
-
-    activeComponentCleanUp[0] = cleanUpMap.get(_id.current)!
-
-    useEffect(() => {
-      activeComponentCleanUp[0] = cleanUpMap.get(_id.current)!
-      return () => {
-        cleanUpMap.get(_id.current)!.forEach((fn) => {
-          fn()
-        })
-      }
-    }, [])
-
-    const subscribe = useCallback((onStoreChange: () => void) => {
-      subscribeMap.set(_id.current, onStoreChange)
-
-      return () => {
-        // 这里就要调用清除副作用的所有函数。
-        const effect = effectMap.get(_id.current)
-        if (effect) effect.stop()
-        subscribeMap.delete(_id.current)
-        effectMap.delete(_id.current)
-      }
-    }, [])
-
-    useSyncExternalStore(
-      subscribe,
-      () => storeSnapshotRef.current,
-      () => storeSnapshotRef.current
-    )
-
-    let effect = effectMap.get(_id.current)
-    if (!effect) {
-      const fn = () => {
-        const onStoreChange = subscribeMap.get(_id.current)
-        if (!isCollectDep.current) {
-          storeSnapshotRef.current = { ...store }
-          onStoreChange?.()
+  for (const patch of patches) {
+    const patchPath = patch.path.map(String)
+    for (const trackedPath of tracked) {
+      const len = Math.min(patchPath.length, trackedPath.length)
+      let isPrefixMatch = true
+      for (let i = 0; i < len; i++) {
+        if (patchPath[i] !== trackedPath[i]) {
+          isPrefixMatch = false
+          break
         }
       }
+      if (isPrefixMatch) return true
+    }
+  }
+  return false
+}
 
-      effect = new ReactiveEffect(fn, noop, () => {
-        if (effect?.dirty) effect.run()
+export function defineStore<
+  Id extends string,
+  S extends StateTree,
+  G extends Record<string, any> = {},
+  A extends Record<string, any> = {}
+>(id: Id, options: DefineStoreOptions<S, G, A>): StoreDefinition<Id, S, G, A> {
+  const getters = options.getters || ({} as G)
+
+  function resolveGetterDependencies(
+    getterName: string,
+    getterDepsMap: Map<string, Set<string>>,
+    visited = new Set<string>()
+  ): Set<string> {
+    if (visited.has(getterName)) {
+      console.warn(`[pinia-react] Circular dependency in getters detected involving: ${getterName}`)
+      return new Set()
+    }
+    visited.add(getterName)
+
+    const finalDeps = new Set<string>()
+    const directDeps = getterDepsMap.get(getterName)
+
+    if (!directDeps) return finalDeps
+
+    for (const dep of directDeps) {
+      if (dep in getters) {
+        const nestedDeps = resolveGetterDependencies(dep, getterDepsMap, visited)
+        nestedDeps.forEach((d) => finalDeps.add(d))
+      } else {
+        finalDeps.add(dep)
+      }
+    }
+    return finalDeps
+  }
+
+  function createStoreInstance(): Store<Id, S, G, A> {
+    const pinia = getActivePinia()
+    const initialState = options.state()
+
+    let storePublicApi: Store<Id, S, G, A>
+    let devTools: any
+    let isTimeTraveling = false
+
+    const localScope: StoreScope = {
+      currentState: initialState,
+      listeners: new Set(),
+      getterCache: new Map(),
+      getterDependencies: new Map(),
+      subscribers: new Map(),
+      createStoreProxy: (_onAccess?: (path: string[]) => void) => storePublicApi as any
+    }
+    pinia._scopes.set(id, localScope)
+
+    const isGetterComputing = new Set<string>()
+
+    const emit = (nextState: S, oldState: S, patches: Patch[]) => {
+      localScope.listeners.forEach((fn) => fn(nextState, oldState, patches))
+
+      localScope.subscribers.forEach((getterKeys, storeId) => {
+        const subscriberScope = pinia._scopes.get(storeId)
+        if (!subscriberScope) return
+        let shouldNotify = false
+        getterKeys.forEach((key) => {
+          if (subscriberScope.getterCache.has(key)) {
+            subscriberScope.getterCache.delete(key)
+            shouldNotify = true
+          }
+        })
+        if (shouldNotify) {
+          const oldSubState = subscriberScope.currentState
+          const newSubState = { ...oldSubState }
+          subscriberScope.currentState = newSubState
+          pinia.state[storeId] = newSubState
+
+          subscriberScope.listeners.forEach((fn) => fn(newSubState, oldSubState, []))
+        }
       })
-      activeEffect.value = effect
-      isCollectDep.current = true
-      effect.run()
-      effectMap.set(_id.current, effect)
-      isCollectDep.current = false
     }
 
-    return store as Store<Id, S, G, A>
+    const internalPatch = (updater: (draft: Draft<S>) => void | S, actionName: string, isReset = false) => {
+      if (isTimeTraveling) return
+
+      const oldState = localScope.currentState as S
+      let patches: Patch[] = []
+
+      const nextState = produce(oldState, updater as any, (p) => {
+        patches = p
+      }) as S
+
+      if (patches.length > 0 || isReset) {
+        localScope.currentState = nextState
+        pinia.state[id] = nextState
+        if (devTools) {
+          devTools.send({ type: actionName, payload: patches }, nextState)
+        }
+        emit(nextState, oldState, patches)
+      }
+    }
+
+    const $patch = (updater: (draft: Draft<S>) => void) => {
+      internalPatch((draft) => {
+        updater(draft)
+      }, '@patch')
+    }
+
+    const $reset = () => internalPatch(() => options.state(), '@reset', true)
+
+    const $subscribe = (callback: SubscriptionCallback<S>) => {
+      const listener = (state: S, prev: S, patches: Patch[]) => callback(state, prev)
+      localScope.listeners.add(listener as any)
+      return () => localScope.listeners.delete(listener as any)
+    }
+
+    const getterInvalidationListener = (_state: S, _prevState: S, patches: Patch[]) => {
+      localScope.getterDependencies.forEach((_deps, getterName) => {
+        const resolvedDeps = resolveGetterDependencies(getterName, localScope.getterDependencies)
+        if (isAffected(patches, resolvedDeps)) {
+          localScope.getterCache.delete(getterName)
+        }
+      })
+    }
+    localScope.listeners.add(getterInvalidationListener as any)
+
+    const originalActions = options.actions || ({} as A)
+    const wrappedActions = {} as TransformActions<A>
+    const proxyTarget = {}
+
+    function createStoreProxy(onAccess?: (path: string[]) => void): Store<Id, S, G, A> {
+      const readonlyWarning = () => {
+        console.warn(`[${id}] Store is read-only. Use actions for mutations.`)
+        return false
+      }
+
+      const createStateProxy = (stateTarget: any, path: string[], onDeepAccess?: (path: string[]) => void): any => {
+        return new Proxy(stateTarget, {
+          get(obj, key) {
+            if (typeof key === 'symbol') return Reflect.get(obj, key)
+            const currentPath = [...path, String(key)]
+            const value = Reflect.get(obj, key)
+            if (typeof value === 'object' && value !== null) {
+              return createStateProxy(value, currentPath, onDeepAccess)
+            }
+            onDeepAccess?.(currentPath)
+            return value
+          },
+          set: readonlyWarning
+        })
+      }
+
+      return new Proxy(proxyTarget as any, {
+        get(_target, key, receiver) {
+          const strKey = String(key)
+
+          if (strKey === '$state') return localScope.currentState
+          if (strKey === '$patch') return $patch
+          if (strKey === '$reset') return $reset
+          if (strKey === '$subscribe') return $subscribe
+
+          const state = localScope.currentState
+          if (strKey in state) {
+            const value = state[strKey]
+            if (typeof value === 'object' && value !== null) {
+              return createStateProxy(value, [strKey], onAccess)
+            }
+            onAccess?.([strKey])
+            return value
+          }
+
+          if (strKey in getters) {
+            onAccess?.([strKey])
+            if (localScope.getterCache.has(strKey)) return localScope.getterCache.get(strKey)
+            if (isGetterComputing.has(strKey)) {
+              console.warn(`[pinia-react] Circular dependency detected in getter "${strKey}"`)
+              return undefined
+            }
+
+            isGetterComputing.add(strKey)
+            const dependencies = new Set<string>()
+            const prevListenerId = activeListenerId
+            const prevGetterKey = activeGetterKey
+            activeListenerId = id
+            activeGetterKey = strKey
+
+            try {
+              const onGetterAccess = (path: string[]) => {
+                dependencies.add(path[0])
+              }
+              const trackingProxyForThis = createStoreProxy(onGetterAccess)
+              const trackingStateProxy = createStateProxy(state, [], onGetterAccess)
+              const result = (getters as any)[strKey].call(trackingProxyForThis, trackingStateProxy)
+
+              localScope.getterDependencies.set(strKey, dependencies)
+              localScope.getterCache.set(strKey, result)
+              return result
+            } finally {
+              activeListenerId = prevListenerId
+              activeGetterKey = prevGetterKey
+              isGetterComputing.delete(strKey)
+            }
+          }
+
+          if (strKey in wrappedActions) {
+            return (wrappedActions as any)[strKey]
+          }
+
+          return Reflect.get(_target, key, receiver)
+        },
+        set(_target, key, value, receiver) {
+          const strKey = String(key)
+          if (strKey === '$state') {
+            console.warn(`[${id}] Do not replace "$state" directly. Use "$patch()" to replace the whole state.`)
+            return false
+          }
+          if (strKey in localScope.currentState || strKey in getters || strKey in wrappedActions) {
+            return readonlyWarning()
+          }
+          return Reflect.set(_target, key, value, receiver)
+        }
+      }) as Store<Id, S, G, A>
+    }
+
+    storePublicApi = createStoreProxy()
+
+    Object.keys(originalActions).forEach((actionName) => {
+      const originalAction = (originalActions as any)[actionName]
+      ;(wrappedActions as any)[actionName] = (...args: any[]) => {
+        let returnValue: any
+        const recipe = (draft: Draft<S>) => {
+          const actionContextProxy = new Proxy({} as any, {
+            get(_, key) {
+              const strKey = String(key)
+              if (Reflect.has(draft, strKey)) return (draft as any)[strKey]
+              if (strKey in getters) {
+                return (getters as any)[strKey].call(actionContextProxy, draft)
+              }
+              return Reflect.get(storePublicApi, key, storePublicApi)
+            },
+            set(_, key, value) {
+              ;(draft as any)[String(key)] = value
+              return true
+            }
+          })
+          returnValue = originalAction.apply(actionContextProxy, args)
+        }
+        internalPatch(recipe, actionName)
+        return returnValue
+      }
+    })
+
+    localScope.createStoreProxy = createStoreProxy as any
+
+    pinia._p.forEach((plugin) => {
+      const pluginResult = plugin({ id, store: storePublicApi, options } as PiniaPluginContext)
+      if (pluginResult) {
+        Object.defineProperties(proxyTarget, Object.getOwnPropertyDescriptors(pluginResult))
+      }
+    })
+
+    pinia._s.set(id, storePublicApi as any)
+
+    if (typeof window !== 'undefined' && (window as any).__REDUX_DEVTOOLS_EXTENSION__) {
+      devTools = (window as any).__REDUX_DEVTOOLS_EXTENSION__.connect({ name: id })
+      devTools.init(localScope.currentState)
+
+      devTools.subscribe((message: any) => {
+        if (message.type === 'DISPATCH') {
+          const payloadType = message.payload?.type
+
+          switch (payloadType) {
+            case 'JUMP_TO_STATE':
+            case 'JUMP_TO_ACTION':
+            case 'IMPORT_STATE': {
+              const newState = typeof message.state === 'string' ? JSON.parse(message.state) : message.state
+              if (!newState || typeof newState !== 'object') return
+
+              isTimeTraveling = true
+              const oldState = localScope.currentState as S
+              localScope.currentState = newState
+              pinia.state[id] = newState
+              localScope.getterCache.clear()
+              emit(newState, oldState, [])
+              isTimeTraveling = false
+              break
+            }
+
+            case 'COMMIT': {
+              devTools.init(localScope.currentState)
+              break
+            }
+
+            case 'ROLLBACK': {
+              const newState = typeof message.state === 'string' ? JSON.parse(message.state) : message.state
+              if (!newState || typeof newState !== 'object') return
+
+              isTimeTraveling = true
+              const oldState = localScope.currentState as S
+              localScope.currentState = newState
+              pinia.state[id] = newState
+              localScope.getterCache.clear()
+              emit(newState, oldState, [])
+              isTimeTraveling = false
+              break
+            }
+
+            case 'RESET': {
+              const originalState = options.state()
+              devTools.init(originalState)
+              internalPatch(() => originalState, '@reset', true)
+              break
+            }
+
+            default:
+              break
+          }
+        }
+      })
+    }
+
+    return storePublicApi
   }
 
-  useStore.$id = id
-  useStore.$getStore = (pinia?: Pinia | null) => {
-    if (pinia) setActivePinia(pinia)
-    pinia = activePinia!
-    if (!pinia._s.has(id)) createOptionsStore(id, options as any, pinia)
-    const store = pinia._s.get(id)!
-    return store as Store<Id, S, G, A>
+  function getStore(): Store<Id, S, G, A> {
+    const pinia = getActivePinia()
+
+    if (!pinia._s.has(id)) {
+      createStoreInstance()
+    }
+
+    if (activeListenerId && activeGetterKey && activeListenerId !== id) {
+      const accessedStoreScope = pinia._scopes.get(id)
+      if (accessedStoreScope) {
+        let subscribers = accessedStoreScope.subscribers.get(activeListenerId)
+        if (!subscribers) {
+          subscribers = new Set()
+          accessedStoreScope.subscribers.set(activeListenerId, subscribers)
+        }
+        subscribers.add(activeGetterKey)
+      }
+    }
+
+    return pinia._s.get(id) as Store<Id, S, G, A>
   }
-  return useStore
+
+  function useStore(): Store<Id, S, G, A> {
+    const pinia = getActivePinia()
+    if (!pinia._s.has(id)) {
+      createStoreInstance()
+    }
+    const currentScope = pinia._scopes.get(id)!
+
+    const trackedPaths = useRef(new Set<string>())
+    trackedPaths.current.clear()
+
+    const subscribe = useCallback(
+      (onStoreChange: () => void) => {
+        const listener = (_state: S, _prevState: S, patches: Patch[]) => {
+          let shouldUpdate = false
+          for (const path of trackedPaths.current) {
+            const topKey = path.split('.')[0]
+            if (topKey in getters) {
+              if (!currentScope.getterCache.has(topKey)) {
+                shouldUpdate = true
+                break
+              }
+            } else {
+              if (patches.length > 0 && isAffected(patches, new Set([path]))) {
+                shouldUpdate = true
+                break
+              }
+            }
+          }
+          if (shouldUpdate) {
+            onStoreChange()
+          }
+        }
+        currentScope.listeners.add(listener as any)
+        return () => currentScope.listeners.delete(listener as any)
+      },
+      [currentScope]
+    )
+
+    const getSnapshot = useCallback(() => currentScope.currentState, [currentScope])
+
+    useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+
+    const trackingProxy = currentScope.createStoreProxy((path) => {
+      trackedPaths.current.add(path.join('.'))
+    })
+
+    return trackingProxy as Store<Id, S, G, A>
+  }
+
+  return { useStore, getStore }
 }

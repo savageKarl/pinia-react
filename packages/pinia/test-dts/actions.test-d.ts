@@ -1,51 +1,28 @@
-/** biome-ignore-all lint/correctness/useHookAtTopLevel: <> */
-import { defineStore, expectType } from '.'
+import { defineStore, expectType, type TypeEqual } from '.'
 
-const useStore = defineStore('name', {
-  state: () => ({ count: 0 }),
+const { useStore, getStore } = defineStore('counter', {
+  state: () => ({
+    count: 0
+  }),
   actions: {
-    useOtherAction() {
-      return this.returnStuff()
+    increment() {
+      this.count++
     },
-    useExternalFunction() {
-      return outer(this as any)
-    },
-    returnStuff() {
-      this.useOtherAction()
-      return this.count * 2
-    },
-    // return type is necessary
-    factorial(n?: number): number {
-      n ??= this.count
-      return n > 1 ? this.factorial(n - 1) * n : 1
-    },
-    crossA(): 'A' | 'B' {
-      if (this.count < 3) {
-        return 'A'
-      } else {
-        return this.crossB()
-      }
-    },
-    crossB() {
-      if (this.count > 2) {
-        return this.crossA()
-      } else {
-        return 'B'
-      }
+    add(amount: number) {
+      this.count += amount
     }
   }
 })
 
-function outer(store: ReturnType<typeof useStore>): number {
-  return store.count * 2
-}
+const store = getStore()
+expectType<number>(store.count)
+expectType<() => void>(store.increment)
+expectType<(amount: number) => void>(store.add)
 
-const store = useStore.$getStore()
+// @ts-expect-error
+store.add('5')
 
-expectType<'A' | 'B'>(store.crossA())
-expectType<'A' | 'B'>(store.crossB())
-expectType<number>(store.factorial())
-expectType<number>(store.returnStuff())
-expectType<number>(store.useExternalFunction())
-expectType<number>(store.useOtherAction())
-expectType<number>(outer(store))
+type StoreFromGetStore = ReturnType<typeof getStore>
+type StoreFromUseStore = ReturnType<typeof useStore>
+
+expectType<TypeEqual<StoreFromGetStore, StoreFromUseStore>>(true)

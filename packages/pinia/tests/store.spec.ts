@@ -1,102 +1,57 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { createPinia, defineStore, setActivePinia } from 'pinia-react'
+import { act, renderHook } from '@testing-library/react'
+import { createPinia, defineStore, setActivePinia } from '../src'
 
-describe('Store', () => {
+describe('Store Core', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
   })
 
-  const useStore = defineStore('main', {
-    state: () => ({
-      a: true,
-      nested: {
-        foo: 'foo',
-        a: { b: 'string' }
-      }
+  it('useStore hooks return different proxies but share the same underlying store state', () => {
+    const { useStore: useMainStore, getStore: getMainStore } = defineStore('main', { state: () => ({}) })
+    const { result: r1 } = renderHook(() => useMainStore())
+    const { result: r2 } = renderHook(() => useMainStore())
+
+    expect(r1.current).not.toBe(r2.current)
+    expect(r1.current.$state).toBe(r2.current.$state)
+    expect(getMainStore()).toBe(getMainStore())
+  })
+
+  it('sets the initial state correctly', () => {
+    const { useStore } = defineStore('main', {
+      state: () => ({ a: true, b: 'hello' })
     })
+    const { result } = renderHook(() => useStore())
+    expect(result.current.$state).toEqual({ a: true, b: 'hello' })
   })
 
-  it('reuses a store', () => {
-    const useStore = defineStore('main', {})
-    const { result: result1 } = renderHook(() => useStore())
-    const { result: result2 } = renderHook(() => useStore())
-    expect(result1.current).toBe(result2.current)
+  it('creates an empty state if state function returns empty object', () => {
+    const { useStore } = defineStore('empty', { state: () => ({}) })
+    const { result } = renderHook(() => useStore())
+    expect(result.current.$state).toEqual({})
   })
 
-  it('works with id as first argument', () => {
-    const useStore = defineStore('main', {
-      state: () => ({
-        a: true,
-        nested: {
-          foo: 'foo',
-          a: { b: 'string' }
+  it('subscribes to state changes via $subscribe', () => {
+    const { useStore, getStore } = defineStore('main', {
+      state: () => ({ value: 0 }),
+      actions: {
+        inc() {
+          this.value++
         }
-      })
-    })
-    const { result: result1 } = renderHook(() => useStore())
-    const { result: result2 } = renderHook(() => useStore())
-    expect(result1.current).toBe(result2.current)
-
-    const useStoreEmpty = defineStore('main', {})
-    const { result: result3 } = renderHook(() => useStoreEmpty())
-    const { result: result4 } = renderHook(() => useStoreEmpty())
-    expect(result3.current).toBe(result4.current)
-  })
-
-  it('sets the initial state', () => {
-    const { result } = renderHook(() => useStore())
-    expect(result.current.$state).toEqual({
-      a: true,
-      nested: {
-        foo: 'foo',
-        a: { b: 'string' }
       }
     })
-  })
-
-  it('can be reset', () => {
-    const { result } = renderHook(() => useStore())
-
-    act(() => {
-      result.current.$state.a = false
-    })
-
+    renderHook(() => useStore())
     const spy = vi.fn()
+    const unsubscribe = getStore().$subscribe(spy)
 
     act(() => {
-      result.current.$subscribe(spy)
-    })
-
-    expect(spy).not.toHaveBeenCalled()
-
-    act(() => {
-      result.current.$reset()
+      getStore().inc()
     })
 
     expect(spy).toHaveBeenCalledTimes(1)
-
+    unsubscribe()
     act(() => {
-      result.current.$state.nested.foo = 'bar'
+      getStore().inc()
     })
-
-    waitFor(() => {
-      expect(spy).toHaveBeenCalledTimes(2)
-      expect(result.current.$state).toEqual({
-        a: true,
-        nested: {
-          foo: 'bar',
-          a: { b: 'string' }
-        }
-      })
-
-      expect(result.current.nested.foo).toBe('bar')
-    })
-  })
-
-  it('can create an empty state if no state option is provided', () => {
-    const useEmptyStore = defineStore('some', {})
-    const { result } = renderHook(() => useEmptyStore())
-
-    expect(result.current.$state).toEqual({})
+    expect(spy).toHaveBeenCalledTimes(1)
   })
 })

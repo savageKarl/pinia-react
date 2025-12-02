@@ -1,135 +1,126 @@
 # Plugins
 
-Pinia supports extending functionality through plugins. Here are some things you can extend:
+Pinia-React supports extending functionality through plugins. A plugin is a function that is applied to every store instance upon creation. You can:
 
-- Add new properties to the store
-- Add new methods to the store
-- Wrap existing methods
-- Modify or even cancel actions
-- Implement side effects, such as local storage
-- Apply plugins only to specific stores
+- Add new properties or methods to stores.
+- Augment existing methods like `$reset`.
+- Implement side effects, such as logging or local storage persistence.
 
-
-Plugins are added to a Pinia instance via pinia.use(). The simplest example is adding a static property to all stores by returning an object.
+Add a plugin to your Pinia instance by calling `pinia.use()` in your application's entry point.
 
 ```ts
 import { createPinia } from 'pinia-react'
 
-// Each created store will have a property named `secret` added to it.
-// After installing this plugin, the plugin can be saved in different files
-function SecretPiniaPlugin() {
-  return { secret: 'the cake is a lie' }
+// A simple plugin that adds a static property to every store.
+function CreatedAtPlugin() {
+  return { createdAt: new Date() }
 }
 
 const pinia = createPinia()
-// Pass the plugin to Pinia
-pinia.use(SecretPiniaPlugin)
+pinia.use(CreatedAtPlugin)
 
-// In another file
-const store = useStore()
-store.secret // 'the cake is a lie'
+// In a component or another file...
+// const store = useSomeStore()
+// console.log(store.createdAt) // The date the store was created
 ```
 
 ## Introduction
 
-A Pinia plugin is a function that can optionally return properties to be added to the store. It receives an optional parameter, which is the context.
+A Pinia plugin is a function that receives a `context` object and can optionally return an object of properties to add to the store.
 
-```tsx
-export function myPiniaPlugin(context) {
-  context.pinia // The pinia created with `createPinia()`. 
-  context.store // The store that the plugin wants to extend
-  context.options // The optional object that defines the store passed to `defineStore()`.
-}
-```
+The `context` object contains three properties:
 
-Then pass this function to pinia using pinia.use():
+- `id`: The unique ID of the store (the first argument passed to `defineStore`).
+- `store`: The store instance the plugin is augmenting.
+- `options`: The options object that was passed to `defineStore()`.
 
 ```ts
-pinia.use(myPiniaPlugin)
+export function myPiniaPlugin(context) {
+  console.log(`Plugin applied to store: ${context.id}`)
+  // context.store
+  // context.options
+}
 ```
 
 ## Extending the Store
 
-You can add specific properties to each store directly by returning an object containing those properties in a plugin:
+You can add properties to every store by returning them from a plugin. These are merged into the store instance.
 
 ```ts
 pinia.use(() => ({ hello: 'world' }))
 ```
 
-You can also set the property directly on the store,
+You can also add properties directly on the `store` object, which is useful for complex objects or functions that need access to the store itself.
 
 ```ts
 pinia.use(({ store }) => {
-  store.hello = 'world'
+  store.customMethod = () => {
+    console.log(`Hello from ${store.$id}`)
+  }
 })
 ```
 
+**Warning:** Plugins should **never** directly modify `store.$state` (e.g., `store.$state.newProp = ...`). Doing so bypasses the reactivity system and will cause your UI to not update. All state modifications must go through actions or `$patch`.
 
+## Augmenting `$reset`
 
-### Adding New State 
+The built-in `$reset()` method only resets state defined in the `state()` function. If a plugin adds its own properties to the store, you may want `$reset` to handle them as well. The correct way to do this is by augmenting (or "wrapping") the original `$reset` method.
 
-If you want to add new state properties to the store, you must add them in two places at the same time.
-
-- On the store, so you can access it with store.myState.
-- On store.$state, so you can access it through store.$state.myState
-
-```ts
-pinia.use(({ store }) => {
-  // eslint-disable-next-line no-prototype-builtins
-  if (!Object.hasOwn(store.$state, 'pluginN')) {
-    store.$state.pluginN = 20
-  }
-  store.pluginN = store.$state.pluginN
-})
-```
-
-### Resetting Plugin-Added State
-
-By default, $reset() does not reset state added by plugins, but you can override it to reset the state you added:
+Here is a safe example of a plugin that adds an `ephemeralCounter` property and a method to increment it. It then augments `$reset` to also reset this counter.
 
 ```ts
-pinia.use(({ store }) => {
-  // eslint-disable-next-line no-prototype-builtins
-  if (!Object.hasOwn(store.$state, 'pluginN')) {
-    store.$state.pluginN = 20
-  }
-  store.pluginN = store.$state.pluginN
+function EphemeralCounterPlugin({ store }) {
+  // Add a new property directly to the store instance
+  store.ephemeralCounter = 0
 
-  // Ensure context (`this`) is set to the store
+  // Augment the original $reset method
   const originalReset = store.$reset.bind(store)
 
-  // Override its $reset function
   return {
+    // Add a new method
+    incrementEphemeral() {
+      store.ephemeralCounter++
+    },
+    // Return a new, augmented $reset function
     $reset() {
+      // Call the original reset logic first
       originalReset()
-      store.pluginN = false
+      // Then, reset the plugin's own property
+      store.ephemeralCounter = 0
+      console.log('Ephemeral counter was also reset.')
     },
   }
-})
+}
+
+pinia.use(EphemeralCounterPlugin)
 ```
 
-### Calling `$subscribe` in Plugins
+## Calling `$subscribe` in Plugins
 
-You can also use store.$subscribe and store.$onAction in plugins.
+You can use `store.$subscribe` within a plugin to react to state changes, for example, to implement local storage persistence.
 
 ```ts
-pinia.use(({ store }) => {
-  store.$subscribe(() => {
-    // respond to store changes
-  })
-  store.$onAction(() => {
-    // respond to store actions
+pinia.use(({ store, id }) => {
+  // You might want to get existing data from localStorage on startup
+  const savedState = localStorage.getItem(id)
+  if (savedState) {
+    store.$patch((draft) => {
+      Object.assign(draft, JSON.parse(savedState))
+    })
+  }
+
+  // Subscribe to changes to save them back
+  store.$subscribe((state) => {
+    localStorage.setItem(id, JSON.stringify(state))
   })
 })
 ```
 
 ## TypeScript
 
-All the above features have type support, so you never need to use any or @ts-ignore.
+### Typing a Plugin
 
-### Annotating Plugin Types 
-
-A Pinia plugin can be type-annotated as follows:
+You can type a plugin's context for better type safety and autocompletion.
 
 ```ts
 import { PiniaPluginContext } from 'pinia-react'
@@ -139,38 +130,24 @@ export function myPiniaPlugin(context: PiniaPluginContext) {
 }
 ```
 
-### Adding Types for New Store Properties
+### Typing New Store Properties
 
-When adding new properties to the store, you should also extend the PiniaCustomProperties interface.
+When you add new properties to a store via a plugin, you must also declare them globally in the `PiniaCustomProperties` interface for TypeScript to recognize them.
 
 ```ts
-import 'pinia'
+import 'pinia-react'
 
-declare module 'pinia' {
+// Make sure this file is treated as a module.
+export {}
+
+declare module 'pinia-react' {
   export interface PiniaCustomProperties {
-    simpleNumber: number
+    // Add your plugin's properties here
+    createdAt: Date;
+    ephemeralCounter: number;
+    incrementEphemeral: () => void;
   }
 }
 ```
 
-Then, you can safely write and read it:
-
-```ts
-pinia.use(({ store }) => {
-  store.simpleNumber = Math.random()
-})
-```
-
-### Adding Types for New State 
-
-When adding new state properties (including to store and store.$state), you need to add types to PiniaCustomStateProperties. Unlike PiniaCustomProperties, it only receives the State generic:
-
-```ts
-import 'pinia'
-
-declare module 'pinia' {
-  export interface PiniaCustomStateProperties<S> {
-    hello: string
-  }
-}
-```
+Now you can access these properties on any store instance with full type support.

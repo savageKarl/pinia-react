@@ -1,27 +1,22 @@
-import { effectScope, markRaw, type Ref, ref } from '@maoism/runtime-core'
-import { type Pinia, setActivePinia } from './rootStore'
-import type { StateTree, StoreGeneric } from './types'
+import { setActivePinia } from './rootStore'
+import type { Pinia, StateTree, StoreGeneric } from './types'
 
-/**
- * Creates a Pinia instance to be used by the application
- */
 export function createPinia(): Pinia {
-  const scope = effectScope(true)
-
-  const state = scope.run<Ref<Record<string, StateTree>>>(() => ref<Record<string, StateTree>>({}))!
-
+  const state: Record<string, StateTree> = {}
   const _p: Pinia['_p'] = []
+  const _s = new Map<string, StoreGeneric>()
+  const _scopes = new Map()
 
-  const pinia: Pinia = markRaw({
+  const pinia: Pinia = {
     use(plugin) {
       _p.push(plugin)
       return this
     },
     _p,
-    _e: scope,
-    _s: new Map<string, StoreGeneric>(),
+    _s,
+    _scopes,
     state
-  })
+  }
 
   setActivePinia(pinia)
 

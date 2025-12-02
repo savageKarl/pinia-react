@@ -2,7 +2,6 @@
   "name": "pinia-react",
   "version": "1.5.2",
   "description": "Intuitive, type safe and flexible Store for React",
-  "packageManager": "pnpm@10.14.0",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -37,7 +36,6 @@
     "playground-react": "vite playground/react",
     "playground-nextjs": "pnpm next dev ./playground/nextjs",
     "test": "vitest",
-    "release": "release-it",
     "test-dts": "tsc -p ./test-dts/tsconfig.json"
   },
   "keywords": [
@@ -58,6 +56,6 @@
     "react-dom": "^18.0.0 || ^19.0.0"
   },
   "dependencies": {
-    "@maoism/runtime-core": "^3.4.13"
+    "immer": "^10.2.0"
   }
 }

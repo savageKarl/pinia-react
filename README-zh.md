@@ -1,104 +1,186 @@
 # pinia-react
 
-[![NPM Version](https://img.shields.io/npm/v/pinia-react)](https://www.npmjs.com/package/pinia-react)
-[![License](https://img.shields.io/npm/l/pinia-react)](https://github.com/savageKarl/pinia-react/blob/main/LICENSE)
+`pinia-react` 是一个轻量级且类型安全的 React 状态管理库。它将 Vue Pinia 的优雅开发体验带到了 React 生态中，结合了 **Immer** 的不可变数据流和 **React Hooks** 的原生性能。
 
-pinia-react 是一个受 Vue 的 Pinia 启发的 React 状态管理库，基于 Pinia 的核心代码实现，结合 React Hooks 和 `useSyncExternalStore`，提供简洁、响应式、TypeScript 友好的状态管理体验。
+核心特性：
+- **响应式**: 基于 `useSyncExternalStore` 构建，完美支持 React 18+ 的并发渲染 (Concurrent Rendering)。
+- **高效**: 细粒度的依赖自动追踪。组件只有在真正使用的属性发生变化时才会重新渲染，无需手动编写 selector。
+- **直观**: 在 Actions 中使用可变 (Mutable) 语法直接修改状态 (底层由 Immer 处理)，代码更简洁。
+- **开发工具**: 开箱即用支持 Redux DevTools Extension，支持时间旅行和状态快照。
 
-查看 [pinia-react 文档](https://savagekarl.github.io/pinia-react) 获取更多详细信息。
-
-## 概览
-
-### 动机
-Pinia 是 Vue 生态中广受好评的状态管理库，以其模块化设计和优雅的 API 著称。pinia-react 将 Pinia 的核心理念和部分实现带入 React 生态，结合 React Hooks 和 `useSyncExternalStore`，提供轻量、直观、TypeScript 友好的状态管理方案，特别适合需要响应式状态管理的现代 React 项目。
-
-### 特性
-- 🔄 **Pinia 风格的响应式**：基于 Pinia 的响应式核心（Vue3 reactivity），自动追踪状态依赖，仅更新必要组件。
-- ⚡️ **React 并发渲染支持**：通过 `useSyncExternalStore`，确保状态更新与 React 18 的并发特性无缝兼容。
-- 🛠 **模块化设计**：沿袭 Pinia 的模块化设计，支持构建多个 Store。
-- 🔍 **TypeScript 友好**：内置类型推导，无需额外配置即可获得完整的类型安全。
-- 🧩 **插件系统**：支持持久化、日志等扩展功能，轻松定制 Store 行为。
-- 🔀 **Pinia API 兼容**：沿用 Pinia 的 API 设计，Vue 开发者可快速上手，React 开发者也能轻松适配。
-
-## 快速开始
-
-### 要求
-- React 18+
-- ES6+
-
-### 安装
+## 安装
 
 ```bash
 pnpm add pinia-react
 ```
 
-### 使用示例
+## 快速开始
+
+### 1. 初始化 Pinia
+
+你只需要在应用入口处调用一次 `createPinia()` 即可初始化全局 Store 注册表。
 
 ```tsx
-import { createPinia, defineStore } from 'pinia-react'
-import { useEffect } from 'react'
+// src/main.tsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { createPinia } from 'pinia-react'
+import App from './App'
 
-// 初始化 Pinia（与 Pinia 的 API 一致）
-const pinia = createPinia();
+// ⚠️ 必须：在渲染应用之前初始化全局 pinia 实例
+createPinia()
 
-// 定义 Store（沿用 Pinia 的 defineStore API）
-const useCounterStore = defineStore('counter', {
-  // 定义初始状态
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)
+```
+
+### 2. 定义 Store
+
+`defineStore` 返回一个包含 `useStore` Hook 和 `getStore` 方法的对象。
+
+```ts
+// src/stores/counter.ts
+import { defineStore } from 'pinia-react'
+
+// 返回值结构为 { useStore, getStore }
+export const counterStoreDefinition = defineStore('counter', {
+  // State: 返回初始状态的函数
   state: () => ({
     count: 0,
-    name: 'Counter'
+    name: 'Pinia'
   }),
-  
+
+  // Getters: 计算属性，具备缓存机制
   getters: {
     doubleCount() {
-      return this.count * 2 // Pinia 风格的 getter
+      // `this` 指向当前 store 实例
+      return this.count * 2
     }
   },
-  
-  // 定义actions方法
+
+  // Actions: 修改状态的方法
   actions: {
     increment() {
+      // `this` 是一个 Immer draft，你可以直接修改它！
       this.count++
     },
-    
-    async fetchSomething() {
-      // 支持异步操作
-      const result = await api.get('/data')
-      this.count = result.count
+    async renameAsync(newName: string) {
+      // 完全支持异步操作
+      await new Promise(r => setTimeout(r, 500))
+      this.name = newName
     }
   }
 })
 
-// 在组件中使用
-function Counter() {
-  // 获取store实例
+// 导出 Hook 供组件使用
+export const useCounterStore = counterStoreDefinition.useStore
+```
+
+### 3. 在组件中使用
+
+```tsx
+import { useCounterStore } from '../stores/counter'
+
+export function Counter() {
+  // store 是一个 Proxy 对象，它会自动追踪你访问了哪些属性
   const store = useCounterStore()
-  
-  useEffect(() => {
-    // 可以调用action方法
-    store.fetchSomething()
-  }, [])
-  
+
   return (
     <div>
-      <h1>{store.name}: {store.count}</h1>
-      <p>Double count: {store.doubleCount}</p>
-      <button onClick={() => store.increment()}>Increment</button>
+      {/* 只有当 count 变化时，组件才会重渲染 */}
+      <p>Count: {store.count}</p>
+      
+      {/* 只有当 doubleCount 变化时，组件才会重渲染 */}
+      <p>Double: {store.doubleCount}</p>
+
+      {/* 调用 Actions 修改状态 */}
+      <button onClick={() => store.increment()}>+1</button>
+      
+      {/* 
+        ⚠️ 注意：在组件中，Store 的属性是【只读】的。
+        store.count++ // ❌ 这会触发警告并失败
+        请始终使用 actions 或 $patch 来修改状态。
+      */}
     </div>
   )
 }
 ```
-更多高级用法（如插件或组件外使用store）请查看[文档](https://savagekarl.github.io/pinia-react)。
 
-## 常见问题
-### pinia-react 与 Pinia 的关系是什么？
-pinia-react 是 Pinia 的 React 适配版本，基于 Pinia 的部分核心代码实现，并针对 React 生态进行了优化（例如使用 `useSyncExternalStore` 支持 React 18 的并发渲染）。我们严格遵守 Pinia 的 MIT 许可证，并在许可证文件中保留了原作者的版权信息。
+## 核心 API
 
-### pinia-react 与 Zustand 或 Redux 相比有何优势？
-pinia-react 结合了 Pinia 的模块化设计和 React 的 Hooks API，提供更简洁的 API 和 TypeScript 支持，适合需要响应式状态管理的现代 React 项目。
+### `$patch`
 
-## 致谢
-pinia-react 基于 [Pinia](https://github.com/vuejs/pinia) 的部分代码实现，并针对 React 生态进行了适配和优化。我们在遵守 MIT 许可证的前提下，保留了 Pinia 原作者的版权信息，并在此向 Pinia 项目及其作者表示感谢。此外，本项目也参考了 [Zustand](https://github.com/pmndrs/zustand) 的设计理念。
+允许你使用回调函数一次性更新多个状态属性。回调函数接收一个 Immer draft。
 
-## 许可证
-本项目采用 [MIT 许可证](https://github.com/savageKarl/pinia-react/blob/main/LICENSE)。pinia-react 基于 Pinia 的部分代码实现，严格遵守其 MIT 许可证要求，并保留了原作者的版权信息。详情请查看许可证文件。
+> **注意**：与 Vue 的 Pinia 不同，本实现仅支持**回调函数**形式，不支持传入对象。
+
+```ts
+const store = useCounterStore()
+
+store.$patch((state) => {
+  // 在这里可以进行批量修改
+  state.count += 10
+  state.name = 'Patched'
+})
+```
+
+### `$reset`
+
+将 Store 的状态重置为初始值（即执行 `state()` 函数返回的结果）。
+
+```ts
+store.$reset()
+```
+
+### `$subscribe`
+
+手动监听状态变化。
+
+```ts
+useEffect(() => {
+  // 订阅状态变更
+  const unsubscribe = store.$subscribe((newState, oldState) => {
+    console.log('状态已更新:', newState)
+  })
+  
+  // 组件卸载时取消订阅
+  return unsubscribe
+}, [store])
+```
+
+### `getStore` (在组件外部使用)
+
+如果你需要在 React 组件之外（例如路由守卫、纯工具函数或 API 拦截器）访问 Store，请使用 `getStore`。
+
+```ts
+import { counterStoreDefinition } from './stores/counter'
+
+function logCount() {
+  // 不使用 Hook 获取当前活跃的 store 实例
+  const store = counterStoreDefinition.getStore()
+  console.log(store.count)
+}
+```
+
+## TypeScript 支持
+
+得益于泛型推导，绝大多数情况下你不需要手动编写类型声明。
+
+```ts
+type CounterState = { count: number }
+
+export const { useStore } = defineStore('id', {
+  state: (): CounterState => ({ count: 0 }),
+  // actions 和 getters 的类型会自动推导
+})
+```
+
+## 文档
+要了解更多关于 Pinia-React 的信息，请查阅其[文档](https://savagekarl.github.io/pinia-react)。
+
+## License
+
+MIT
