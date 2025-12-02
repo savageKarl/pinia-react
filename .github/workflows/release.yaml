@@ -1,71 +1,47 @@
-# .github/workflows/release.yml
-# 2025 年终极 Changesets 发版工作流（pinia-react 专用）
 name: Release
 
-# 关键变化：只监听 v* tag，不再监听 push main/dev
 on:
   push:
     tags:
       - "v*"
 
 permissions:
-  contents: write      # 用于 checkout + git tag
-  pull-requests: write # 用于 GitHub Release（可选）
-  id-token: write      # 支持 workload identity（推荐）
+  contents: write
+  id-token: write
 
 jobs:
   publish:
     name: Build, Test & Publish
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0        # Changesets 需要完整历史来计算版本
+          fetch-depth: 0
           fetch-tags: true
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           registry-url: https://registry.npmjs.org
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
+      - run: pnpm run test
+      - run: pnpm run build
 
-      - name: Lint & Type Check
-        run: pnpm run check
-
-      - name: Run tests
-        run: pnpm run test
-
-      - name: Build
-        run: pnpm run build
-
-      - name: Publish to npm
-        run: npx changeset publish
+      - run: npx changeset publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          # 如果你用的是 GitHub Packages，可以改成 GITHUB_TOKEN
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-beta')
         with:
           generate_release_notes: true
-          draft: false
-          prerelease: false
-
-      - name: Create GitHub Pre-release (for beta)
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-beta')
-        with:
-          generate_release_notes: true
-          draft: false
-          prerelease: true
+          body: |
+            Please refer to [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for complete release notes.
+          prerelease: ${{ contains(github.ref, '-') }}
