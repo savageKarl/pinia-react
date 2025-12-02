@@ -43,5 +43,5 @@ jobs:
         with:
           generate_release_notes: true
           body: |
-            Please refer to [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for complete release notes.
+            Please refer to [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main//packages/pinia/CHANGELOG.md) for complete release notes.
           prerelease: ${{ contains(github.ref, '-') }}
