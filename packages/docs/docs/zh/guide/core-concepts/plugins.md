@@ -1,135 +1,126 @@
-# 插件
+# 插件 (Plugins)
 
-pinia 支持通过插件扩展功能，以下是你可以扩展的内容：
+Pinia-React 支持通过插件来扩展功能。插件是一个在每个 Store 实例创建时应用的函数。你可以：
 
-- 为 store 添加新的属性
-- 为 store 增加新的方法
-- 包装现有的方法
-- 改变甚至取消 action
-- 实现副作用，如本地存储
-- 仅应用插件于特定 store
+- 向 Store 添加新的属性或方法。
+- 增强现有的方法，如 `$reset`。
+- 实现副作用，例如日志记录或本地存储（Local Storage）持久化。
 
-
-插件是通过 pinia.use() 添加到 pinia 实例的。最简单的例子是通过返回一个对象将一个静态属性添加到所有 store。
+通过在应用入口调用 `pinia.use()` 将插件添加到你的 Pinia 实例中。
 
 ```ts
 import { createPinia } from 'pinia-react'
 
-// 创建的每个 store 中都会添加一个名为 `secret` 的属性。
-// 在安装此插件后，插件可以保存在不同的文件中
-function SecretPiniaPlugin() {
-  return { secret: 'the cake is a lie' }
+// 一个简单的插件，向每个 Store 添加一个静态属性
+function CreatedAtPlugin() {
+  return { createdAt: new Date() }
 }
 
 const pinia = createPinia()
-// 将该插件交给 Pinia
-pinia.use(SecretPiniaPlugin)
+pinia.use(CreatedAtPlugin)
 
-// 在另一个文件中
-const store = useStore()
-store.secret // 'the cake is a lie'
+// 在组件或其他文件中...
+// const store = useSomeStore()
+// console.log(store.createdAt) // Store 创建的时间
 ```
 
 ## 简介
 
-Pinia 插件是一个函数，可以选择性地返回要添加到 store 的属性。它接收一个可选参数，即 context。
+Pinia 插件是一个接收 `context` 对象并可选择性返回要添加到 Store 的属性对象的函数。
 
-```tsx
-export function myPiniaPlugin(context) {
-  context.pinia // 用 `createPinia()` 创建的 pinia。
-  context.store // 该插件想扩展的 store
-  context.options // 定义传给 `defineStore()` 的 store 的可选对象。
-}
-```
+`context` 对象包含三个属性：
 
-然后用 pinia.use() 将这个函数传给 pinia：
+- `id`: Store 的唯一 ID（传递给 `defineStore` 的第一个参数）。
+- `store`: 插件正在增强的 Store 实例。
+- `options`: 传递给 `defineStore()` 的选项对象。
 
 ```ts
-pinia.use(myPiniaPlugin)
+export function myPiniaPlugin(context) {
+  console.log(`插件已应用到 Store: ${context.id}`)
+  // context.store
+  // context.options
+}
 ```
 
 ## 扩展 Store
 
-你可以直接通过在一个插件中返回包含特定属性的对象来为每个 store 都添加上特定属性：
+你可以通过从插件返回对象来向每个 Store 添加属性。这些属性会被合并到 Store 实例中。
 
 ```ts
 pinia.use(() => ({ hello: 'world' }))
 ```
 
-你也可以直接在 store 上设置该属性，
+你也可以直接在 `store` 对象上添加属性，这对于需要访问 Store 本身的复杂对象或函数非常有用。
 
 ```ts
 pinia.use(({ store }) => {
-  store.hello = 'world'
+  store.customMethod = () => {
+    console.log(`Hello from ${store.$id}`)
+  }
 })
 ```
 
+**警告：** 插件**绝不**应该直接修改 `store.$state`（例如 `store.$state.newProp = ...`）。这样做会绕过响应式系统，导致 UI 无法更新。所有的状态修改都必须通过 Action 或 `$patch` 进行。
 
+## 增强 `$reset`
 
-### 添加新的 state 
+内置的 `$reset()` 方法只会重置在 `state()` 函数中定义的状态。如果插件向 Store 添加了自己的属性，你可能希望 `$reset` 也能处理它们。正确的方法是增强（或“包装”）原始的 `$reset` 方法。
 
-如果你想给 store 添加新的 state 属性, 你必须同时在两个地方添加它。
-
-- 在 store 上，然后你才可以用 store.myState 访问它。
-- 在 store.$state 上，然你才可以通过 store.$state.myState 访问它
-
-```ts
-pinia.use(({ store }) => {
-  // eslint-disable-next-line no-prototype-builtins
-  if (!Object.hasOwn(store.$state, 'pluginN')) {
-    store.$state.pluginN = 20
-  }
-  store.pluginN = store.$state.pluginN
-})
-```
-
-### 重置插件中添加的 state
-
-默认情况下，$reset() 不会重置插件添加的 state，但你可以重写它来重置你添加的 state：
+下面是一个安全的示例：该插件添加了一个 `ephemeralCounter` 属性和一个自增方法，并增强了 `$reset` 以同时重置这个计数器。
 
 ```ts
-pinia.use(({ store }) => {
-  // eslint-disable-next-line no-prototype-builtins
-  if (!Object.hasOwn(store.$state, 'pluginN')) {
-    store.$state.pluginN = 20
-  }
-  store.pluginN = store.$state.pluginN
+function EphemeralCounterPlugin({ store }) {
+  // 直接向 Store 实例添加新属性
+  store.ephemeralCounter = 0
 
-  // 确认将上下文 (`this`) 设置为 store
+  // 绑定原始的 $reset 方法
   const originalReset = store.$reset.bind(store)
 
-  // 覆写其 $reset 函数
   return {
+    // 添加新方法
+    incrementEphemeral() {
+      store.ephemeralCounter++
+    },
+    // 返回一个新的、增强后的 $reset 函数
     $reset() {
+      // 首先执行原始的重置逻辑
       originalReset()
-      store.pluginN = false
+      // 然后，重置插件自己的属性
+      store.ephemeralCounter = 0
+      console.log('临时计数器也已被重置。')
     },
   }
-})
+}
+
+pinia.use(EphemeralCounterPlugin)
 ```
 
-### 在插件中调用 `$subscribe`
+## 在插件中调用 `$subscribe`
 
-你也可以在插件中使用 store.$subscribe 和 store.$onAction 。
+你可以在插件中使用 `store.$subscribe` 来监听状态变化，例如实现本地存储持久化。
 
 ```ts
-pinia.use(({ store }) => {
-  store.$subscribe(() => {
-    // 响应 store 变化
-  })
-  store.$onAction(() => {
-    // 响应 store actions
+pinia.use(({ store, id }) => {
+  // 启动时尝试从 localStorage 获取数据
+  const savedState = localStorage.getItem(id)
+  if (savedState) {
+    store.$patch((draft) => {
+      Object.assign(draft, JSON.parse(savedState))
+    })
+  }
+
+  // 订阅变化并保存回去
+  store.$subscribe((state) => {
+    localStorage.setItem(id, JSON.stringify(state))
   })
 })
 ```
 
-## TypeScript
+## TypeScript 支持
 
-上述一切功能都有类型支持，所以你永远不需要使用 any 或 @ts-ignore。
+### 为插件添加类型
 
-### 标注插件类型 
-
-一个 Pinia 插件可按如下方式实现类型标注：
+你可以为插件的上下文（context）添加类型注解，以获得更好的类型安全和自动补全。
 
 ```ts
 import { PiniaPluginContext } from 'pinia-react'
@@ -139,38 +130,24 @@ export function myPiniaPlugin(context: PiniaPluginContext) {
 }
 ```
 
-### 为新的 store 属性添加类型
+### 为新 Store 属性添加类型
 
-当在 store 中添加新的属性时，你也应该扩展 PiniaCustomProperties 接口。
+当你通过插件向 Store 添加新属性时，你必须在 `PiniaCustomProperties` 接口中全局声明它们，以便 TypeScript 能够识别。
 
 ```ts
-import 'pinia'
+import 'pinia-react'
 
-declare module 'pinia' {
+// 确保该文件被视为一个模块
+export {}
+
+declare module 'pinia-react' {
   export interface PiniaCustomProperties {
-    simpleNumber: number
+    // 在这里添加插件的属性类型
+    createdAt: Date;
+    ephemeralCounter: number;
+    incrementEphemeral: () => void;
   }
 }
 ```
 
-然后，就可以安全地写入和读取它了：
-
-```ts
-pinia.use(({ store }) => {
-  store.simpleNumber = Math.random()
-})
-```
-
-### 为新的 state 添加类型 
-
-当添加新的 state 属性(包括 store 和 store.$state )时，你需要将类型添加到 PiniaCustomStateProperties 中。与 PiniaCustomProperties 不同的是，它只接收 State 泛型：
-
-```ts
-import 'pinia'
-
-declare module 'pinia' {
-  export interface PiniaCustomStateProperties<S> {
-    hello: string
-  }
-}
-```
+现在，你可以在任何 Store 实例上访问这些属性，并享受完整的类型支持。

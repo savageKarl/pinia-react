@@ -2,18 +2,18 @@ import { PackageManagerTabs, Tab, Tabs } from '@theme';
 
 # 快速开始
 
-## 要求
+## 环境要求
 
 - ES6+
-- React18+ 
+- React 18+
 
 ## 安装
 
-用你喜欢的包管理器安装 pinia-react：
+使用你喜欢的包管理器安装 `pinia-react`：
 
 <PackageManagerTabs command="install pinia-react" />
 
-创建一个 pinia 实例
+创建一个 Pinia 实例，并在应用程序的根目录下调用一次。这对于确保所有 Store 共享同一个全局状态容器至关重要。
 
 <Tabs>
   <Tab label="TSX">
@@ -32,13 +32,12 @@ createRoot(document.querySelector('#app')!).render(
     <App />
   </StrictMode>
 )
-
 ```
 
   </Tab>
   <Tab label="JSX">
 
-```tsx title="src/index.jsx"
+```jsx title="src/index.jsx"
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
@@ -52,24 +51,23 @@ createRoot(document.querySelector('#app')!).render(
     <App />
   </StrictMode>
 )
-
 ```
   </Tab>
 </Tabs>
 
-## Store 是什么？
+## 什么是 Store？
 
-Store 是一个容器，它封装了应用中的全局状态（State）、用于修改状态的业务逻辑（Actions）以及基于状态派生出的可读数据（Getters）。它允许应用中的任何组件访问和修改共享数据，从而实现跨组件通信和状态同步，
+Store（仓库）是一个实体，它封装了应用中的全局状态（State）、修改状态的业务逻辑（Actions）以及从状态衍生的可读数据（Getters）。它允许应用中的任何组件访问和修改共享数据，从而实现跨组件通信和状态同步。
 
-* **单一数据源（Single Source of Truth）：** Store 将所有共享状态集中存放在一个地方，避免了数据分散和混乱，让应用状态变得可预测且易于追踪。
-* **解耦：** Store 将状态管理从组件中分离出来，组件只需要关心如何使用和展示数据，而不需要关心数据来自哪里或如何修改，这大大降低了组件间的耦合度。
-* **可测试性：** 集中管理的状态和逻辑使得编写单元测试变得更简单，因为你可以在不渲染组件的情况下测试 Store 的行为。
+*   **单一数据源（Single Source of Truth）：** Store 将所有共享状态集中在一个地方，避免了数据分散和混乱，使应用状态可预测且易于追踪。
+*   **解耦（Decoupling）：** Store 将状态管理与组件分离。组件只需要关心如何使用和展示数据，而不需要关心数据来自哪里或如何被修改，这极大地降低了组件间的耦合度。
+*   **可测试性（Testability）：** 集中式的状态管理和逻辑使得编写单元测试变得更简单，因为你可以在不渲染组件的情况下测试 Store 的行为。
 
+## 什么时候应该使用 Store？
 
-## 应该在什么时候使用 Store?
+Store 应该包含那些需要在整个应用中访问的数据，例如主题配置、用户登录状态等。或者，如果你有一个复杂的交互页面，包含多个拥有各自状态的组件，这种场景下也可以考虑使用 Store 来管理状态和业务逻辑，以提高效率。
 
-一个 store 应该包含整个应用可以访问到的数据，例如主题，用户登录状态等等。或者是你有一个复杂交互性的页面，里面会用多个组件，这些组件都会有自己的状态，这种场景就可以考虑用一个 store 管理状态和业务逻辑，提高效率。
+## 什么时候不应该使用 Store？
 
-## 什么时候不应该使用 Store 
-
-只在当前页面或者当前组件使用的状态，并没有需要通信或者依赖关系的需求，就没有必要使用一个单独的 store 来创建和管理。
+如果状态只在当前页面或组件中使用，且没有通信或依赖需求，那么就没有必要创建和管理一个单独的 Store。
+```

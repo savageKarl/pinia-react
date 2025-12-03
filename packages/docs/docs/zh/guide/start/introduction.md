@@ -1,82 +1,79 @@
 # 简介
 
-pinia-react 是一个受 Vue 的 [Pinia](https://github.com/vuejs/pinia) 启发的 React 状态管理库，基于 Pinia 的核心代码实现，结合 React Hooks 和 `useSyncExternalStore`，提供简洁、响应式、TypeScript 友好的状态管理体验。
+pinia-react 是一个深受 Vue [Pinia](https://github.com/vuejs/pinia) 启发的 React 状态管理库。它利用 React Hooks 和 `useSyncExternalStore` 提供了一种简洁、响应式且对 TypeScript 友好的状态管理体验。
 
-它是 [Pinia](https://github.com/vuejs/pinia) 的 React 适配版本，基于 Pinia 的部分核心代码实现，并针对 React 生态进行了优化（例如使用 `useSyncExternalStore` 支持 React 18 的并发渲染）。我们严格遵守 Pinia 的 MIT 许可证，并在许可证文件中保留了原作者的版权信息。
+它是 Pinia 的 React 改版，构建在相似的核心概念之上，但针对 React 生态系统进行了优化（例如，使用 `useSyncExternalStore` 以支持 React 18 的并发渲染）。
 
+## 为什么要使用 Pinia-React？
 
-## 为什么你应该使用 Pinia-React？
-
-Pinia-React 是 Pinia 的 React 适配版本，它允许你跨组件或页面共享状态。它会自动追踪状态依赖，仅更新必要组件。注意，并不是 store 的数据变化时，使用到的组件就会变化，它是按需收集依赖的，例如：一个 store 里面有 count 和 name 两个数据，如果你的组件仅用到了 count，那么只有 count 变化时，你的组件才会重新渲染。
-
+Pinia-React 允许你在组件或页面之间共享状态。它会自动追踪状态依赖，并且只更新必要的组件。需要注意的是，组件不会仅仅因为 Store 的数据变化而重新渲染；它是按需收集依赖的。例如，如果一个 Store 有两个数据 `count` 和 `name`，而你的组件只使用了 `count`，那么只有当 `count` 发生变化时，你的组件才会重新渲染。
 
 ## 基础示例
 
-下面就是 pinia API 的基本用法 (为继续阅读本简介请确保你已阅读过了[开始](./getting-started.md)章节)。你可以先创建一个 Store：
+下面是 Pinia-React API 的一个基本示例（继续阅读本简介前，请确保你已经阅读了[快速开始](./getting-started.mdx)章节）。首先，你可以创建一个 Store：
 
 ```tsx
-// stores/counter.js
+// stores/counter.ts
 import { defineStore } from 'pinia-react'
 
-export const useCounterStore = defineStore('counter', {
+const { useStore, getStore } = defineStore('counter', {
   state: () => {
     return { count: 0 }
   },
-  // 也可以这样定义
-  // state: () => ({ count: 0 })
   actions: {
     increment() {
       this.count++
     },
   },
 })
+
+export const useCounterStore = useStore
+export const getCounterStore = getStore
 ```
 
-然后你就可以在一个组件中**使用**该 store 了：
+然后，你可以在组件中**使用**这个 Store：
 
 ```tsx
-export function App() {
+import { useCounterStore } from './stores/counter';
 
-  const store = useCounterStore()
-  counter.count++
-  // 自动补全！ ✨
-  counter.$patch({ count: counter.count + 1 })
-  // 或使用 action 代替
-  counter.increment()
+export function App() {
+  const counter = useCounterStore()
 
   return (
-    <div>Current Count: {{ counter.count }}</div>
+    <div>
+      <p>当前计数: {counter.count}</p>
+      <button onClick={() => counter.increment()}>增加</button>
+    </div>
   )
 }
 ```
 
-## 与 Pinia 区别
+## 与 Pinia 的区别
 
-- pinia-react 只有 options store 风格写法，没有 setup store 风格写法
-- 暂时没有测试工具集
-- 暂时没有 Devtools 支持
-- 暂时没有热更新支持
-- 没有 vue 生态专属的 映射 state 的辅助函数
+  - Pinia-React 仅支持 **Option Store（选项式）** 风格，没有 Setup Store 风格。
+  - Pinia-React 内置了对 Redux DevTools 的支持。
+  - 目前没有测试工具套件。
+  - 目前不支持热重载（HMR）。
+  - 没有用于映射状态（mapState 等）的 Vue 专用辅助函数。
 
+## 对比
 
-## 比较
+React 状态管理库种类繁多。在这里，我们主要将其与生态中流行的 Zustand 进行对比。
 
-React 状态管理库种类繁多，各有千秋，Pinia-React 作为其中之一。在这里，主要与 Zustand 进行比较，关于 Redux、Valtio、Jotai 和 Recoil，可以参考 Zustand [文档](https://zustand.docs.pmnd.rs/getting-started/comparison#render-optimization-(vs-redux))
+### 状态更新模式
 
+Pinia-React 和 Zustand 都使用 **不可变状态（Immutable State）模式**，这是可预测状态管理的最佳实践。关键的区别在于它们实现不可变性的 API 理念。
 
-### 状态模型
+- **Pinia-React** 底层使用 Immer，提供了一种**直接修改（Mutable）风格的 API**。你可以编写简单、直观的代码，如 `this.count++`，而库会透明地为你处理新不可变状态对象的创建。这大大简化了开发，尤其是对于复杂或嵌套状态的更新。
 
-Pinia-React 和 Zustand 在状态管理方面采取了根本不同的方法。Pinia-React 基于可变状态模型，而 Zustand 基于不可变状态模型 。
+- **Zustand** 使用**函数式更新 API**。你必须在 `set` 函数中显式返回一个新的状态对象，并手动处理不可变性（例如使用 `...state` 展开语法）。
 
 ### Pinia-React
 
 ```tsx
-import { defineStore, createPinia } from 'pinia-react';
+import { defineStore } from 'pinia-react';
 
-// 在入口文件使用即可。
-const pinia = createPinia();
-
-export const useCounterStore = defineStore('counter', {
+const { useStore } = defineStore('counter', {
   state: () => ({
     count: 0,
   }),
@@ -89,6 +86,8 @@ export const useCounterStore = defineStore('counter', {
     },
   },
 });
+
+export const useCounterStore = useStore;
 ```
 
 ### Zustand
@@ -109,10 +108,11 @@ export const useCounterStoreZustand = create<CounterState>((set) => ({
 }));
 ```
 
-
 ### 渲染优化
 
-Pinia-React 和 Zustand 另一个不同之处在于，Pinia-React 会自动收集依赖进行渲染优化，而 Zustand 需要通过选择器手动选择依赖进行渲染优化。
+- **Pinia-React** 提供**自动且透明**的渲染优化。它会追踪组件在渲染期间访问了哪些属性，并且只有当这些特定属性发生变化时才会触发重新渲染。
+
+- **Zustand** 需要通过选择器（Selectors）进行**手动渲染优化**。为了防止无关的状态变化导致重渲染，你必须显式选择组件需要的状态片段。
 
 ### Pinia-React
 
@@ -120,6 +120,8 @@ Pinia-React 和 Zustand 另一个不同之处在于，Pinia-React 会自动收�
 import React from 'react';
 import { useCounterStore } from './counterStore';
 
+// 这个组件自动订阅且仅订阅 `count`。
+// 如果其他状态属性（例如 `name`）发生变化，它**不会**重新渲染。
 export function CounterWithPinia() {
   const counter = useCounterStore();
 
@@ -139,6 +141,7 @@ export function CounterWithPinia() {
 import React from 'react';
 import { useCounterStoreZustand } from './counterStore';
 
+// 为了优化渲染，我们必须单独选择每个状态片段或 Action。
 export function CounterWithZustand() {
   const count = useCounterStoreZustand((state) => state.count);
   const increment = useCounterStoreZustand((state) => state.increment);
