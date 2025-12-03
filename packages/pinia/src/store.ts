@@ -147,7 +147,7 @@ export function defineStore<
     const $reset = () => internalPatch(() => options.state(), '@reset', true)
 
     const $subscribe = (callback: SubscriptionCallback<S>) => {
-      const listener = (state: S, prev: S, patches: Patch[]) => callback(state, prev)
+      const listener = (state: S, prev: S) => callback(state, prev)
       localScope.listeners.add(listener as any)
       return () => localScope.listeners.delete(listener as any)
     }
