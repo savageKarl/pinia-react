@@ -2,22 +2,22 @@
   {
     "type": "file",
     "name": "store",
-    "label": "定义Store"
+    "label": "定义 Store"
   },
   {
     "type": "file",
     "name": "state",
-    "label": "State"
+    "label": "State (状态)"
   },
   {
     "type": "file",
     "name": "getters",
-    "label": "Getter"
+    "label": "Getter (计算属性)"
   },
   {
     "type": "file",
     "name": "actions",
-    "label": "Action"
+    "label": "Action (动作)"
   },
   {
     "type": "file",
@@ -27,6 +27,6 @@
   {
     "type": "file",
     "name": "outside-component-usage",
-    "label": "组件外的store"
+    "label": "组件外使用 Store"
   }
 ]

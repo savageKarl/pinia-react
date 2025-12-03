@@ -1,44 +1,51 @@
-import { PackageManagerTabs, Tab, Tabs } from '@theme';
+# 在组件外使用 Store
 
-# 组件外使用store
+Pinia-React 的 Store 不仅可以在 React 组件内部使用，也可以在外部使用。虽然 `useStore()` 是专门为组件设计的 Hook，但在其他场景下，你可以使用 `getStore()` 函数。
 
-Pinia store 依靠 pinia 实例在所有调用中共享同一个 store 实例。大多数时候，只需调用你定义的 useStore() 函数，完全开箱即用，你总是要在入口文件安装 pinia 的：
+## `getStore` 函数
 
+当你定义一个 Store 时，`defineStore()` 会返回一个包含 `useStore`（Hook）和 `getStore`（普通函数）的对象。
 
-<Tab label="JSX">
+推荐的模式是从 Store 定义文件中同时导出这两个函数。
 
-```tsx title="src/index.jsx"
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { App } from './App'
-import './style.css'
-import { createPinia } from 'pinia-react'
+```tsx title="src/stores/auth-store.ts"
+import { defineStore } from 'pinia-react'
 
-// 需要在入口文件安装 pinia，这很重要
-createPinia()
+const { useStore, getStore } = defineStore('auth', {
+  state: () => ({
+    isAuthenticated: false,
+    // ...
+  }),
+  actions: {
+    logout() {
+      this.isAuthenticated = false
+    }
+  }
+})
 
-createRoot(document.querySelector('#app')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-)
-
+export const useAuthStore = useStore
+export const getAuthStore = getStore
 ```
-</Tab>
 
-<Tab label="JSX">
+## 使用示例
 
-```tsx title="src/auth.js"
-import { useAuthStore } from './auth-store'
+现在，你可以在任何 JavaScript 模块中导入 `getAuthStore`，比如在服务文件、API 客户端或另一个 Store 的 Action 中。
 
-async function auth() {
-  if (xxx) {
-    // 在组件外获取 store 需要调用 $getStore，因为 defineStore  返回的是 hook
-    const store = useAuthStore.$getStore()
+下面是一个在工具函数中调用 Store Action 的例子：
+
+```tsx title="src/auth-service.ts"
+import { getAuthStore } from './stores/auth-store'
+
+export function performLogout() {
+  // 通过调用 getStore() 获取 Store 实例
+  const authStore = getAuthStore()
+
+  // 现在你可以访问 state、getter 或 action 了
+  if (authStore.isAuthenticated) {
+    authStore.logout()
+    console.log('用户已登出。')
   }
 }
-
 ```
-</Tab>
 
-
+这种模式确保了无论你是在组件内部还是外部，访问的始终是同一个全局单例的 Store 实例。
