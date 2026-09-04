@@ -1,17 +1,17 @@
 # 在组件外使用 Store
 
-Pinia-React 的 Store 不仅可以在 React 组件内部使用，也可以在外部使用。虽然 `useStore()` 是专门为组件设计的 Hook，但在其他场景下，你可以使用 `getStore()` 函数。
+Pinia-React 的 Store 不仅可以在 React 组件内部使用，也可以在外部使用。对于 `auth` Store，自动生成的 `useAuthStore()` 是专门为组件设计的 Hook，而其他场景可以使用自动生成的 `getAuthStore()` 函数。原有的 `useStore()` 和 `getStore()` 方法仍然保留。
 
-## `getStore` 函数
+## `getAuthStore` 函数
 
-当你定义一个 Store 时，`defineStore()` 会返回一个包含 `useStore`（Hook）和 `getStore`（普通函数）的对象。
+当你通过 `defineStore('auth', ...)` 定义一个 Store 时，它会根据 Store ID 自动生成 `useAuthStore`（Hook）和 `getAuthStore`（普通函数）。
 
-推荐的模式是从 Store 定义文件中同时导出这两个函数。
+推荐的模式是从 Store 定义文件中同时导出这两个自动生成的函数。原有的 `useStore` 和 `getStore` 方法也仍然可以使用。
 
 ```tsx title="src/stores/auth-store.ts"
 import { defineStore } from 'pinia-react'
 
-const { useStore, getStore } = defineStore('auth', {
+const { useAuthStore, getAuthStore } = defineStore('auth', {
   state: () => ({
     isAuthenticated: false,
     // ...
@@ -23,8 +23,6 @@ const { useStore, getStore } = defineStore('auth', {
   }
 })
 
-export const useAuthStore = useStore
-export const getAuthStore = getStore
 ```
 
 ## 使用示例
@@ -37,7 +35,7 @@ export const getAuthStore = getStore
 import { getAuthStore } from './stores/auth-store'
 
 export function performLogout() {
-  // 通过调用 getStore() 获取 Store 实例
+  // 通过调用 getAuthStore() 获取 Store 实例
   const authStore = getAuthStore()
 
   // 现在你可以访问 state、getter 或 action 了

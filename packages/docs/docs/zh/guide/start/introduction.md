@@ -16,7 +16,7 @@ Pinia-React 允许你在组件或页面之间共享状态。它会自动追踪�
 // stores/counter.ts
 import { defineStore } from 'pinia-react'
 
-const { useStore, getStore } = defineStore('counter', {
+const { useCounterStore, getCounterStore } = defineStore('counter', {
   state: () => {
     return { count: 0 }
   },
@@ -27,8 +27,6 @@ const { useStore, getStore } = defineStore('counter', {
   },
 })
 
-export const useCounterStore = useStore
-export const getCounterStore = getStore
 ```
 
 然后，你可以在组件中**使用**这个 Store：
@@ -73,7 +71,7 @@ Pinia-React 和 Zustand 都使用 **不可变状态（Immutable State）模式**
 ```tsx
 import { defineStore } from 'pinia-react';
 
-const { useStore } = defineStore('counter', {
+const { useCounterStore, getCounterStore } = defineStore('counter', {
   state: () => ({
     count: 0,
   }),
@@ -87,7 +85,6 @@ const { useStore } = defineStore('counter', {
   },
 });
 
-export const useCounterStore = useStore;
 ```
 
 ### Zustand

@@ -12,7 +12,7 @@ The state is defined as a function that returns the initial state object.
 ```tsx
 import { defineStore } from 'pinia-react'
 
-const { useStore, getStore } = defineStore('storeId', {
+const { useStore, getStore } = defineStore('counter', {
   // An arrow function is recommended for full type inference
   state: () => {
     return {
@@ -37,7 +37,7 @@ interface UserInfo {
   age: number
 }
 
-const { useStore, getStore } = defineStore('storeId', {
+const { useStore, getStore } = defineStore('counter', {
   state: () => {
     return {
       userList: [] as UserInfo[],
@@ -55,7 +55,7 @@ interface State {
   user: UserInfo | null
 }
 
-const { useStore, getStore } = defineStore('storeId', {
+const { useStore, getStore } = defineStore('counter', {
   state: (): State => {
     return {
       userList: [],
@@ -71,7 +71,7 @@ How you access state depends on the context:
 
 ### In React Components
 
-Inside a React component or a custom hook, use the `useStore` hook to get the store instance.
+Inside a React component or a custom hook, use the generated `useCounterStore` hook to get the store instance. The generic `useStore` helper is also available for backwards compatibility.
 
 ```tsx
 import { useMyStore } from './stores/myStore';
@@ -88,7 +88,7 @@ function MyComponent() {
 Inside a store's own actions or getters, use the `this` keyword to access state and other store properties.
 
 ```tsx
-defineStore('storeId', {
+defineStore('counter', {
   state: () => ({ count: 0 }),
   actions: {
     increment() {
@@ -104,7 +104,7 @@ defineStore('storeId', {
 You can reset the state to its initial value by calling the store's `$reset()` method.
 
 ```tsx
-const store = useStore()
+const store = useCounterStore()
 store.$reset()
 ```
 

@@ -10,7 +10,7 @@ Getters are functions that compute derived state from your Store's state.
 Define getters using the `getters` property in `defineStore()`. They receive `state` as their first argument.
 
 ```tsx
-export const { useStore: useCounterStore } = defineStore('counter', {
+export const { useCounterStore, getCounterStore } = defineStore('counter', {
   state: () => ({
     count: 0,
   }),
@@ -25,7 +25,7 @@ export const { useStore: useCounterStore } = defineStore('counter', {
 To use other getters within a getter, you can use a regular function and access other store properties via `this`. In TypeScript, you **must** explicitly define the return type for this to work.
 
 ```tsx
-export const { useStore: useCounterStore } = defineStore('counter', {
+export const { useCounterStore, getCounterStore } = defineStore('counter', {
   state: () => ({
     count: 0,
   }),
@@ -59,12 +59,12 @@ export function CounterComponent() {
 
 ## Accessing Getters from Other Stores
 
-To use a getter from another store, get that store's instance and use it. Remember to use the `getStore` function for use cases outside of React components, like inside another store's logic.
+To use a getter from another store, get that store's instance and use it. For use cases outside of React components, like inside another store's logic, use the generated `getOtherStore` helper. The generic `getStore` helper remains available for backwards compatibility.
 
 ```tsx
 import { getOtherStore } from './other-store'
 
-export const { useStore: useMainStore } = defineStore('main', {
+export const { useMainStore, getMainStore } = defineStore('main', {
   state: () => ({
     localData: 'hello'
   }),

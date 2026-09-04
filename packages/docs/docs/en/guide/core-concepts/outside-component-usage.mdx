@@ -1,17 +1,17 @@
 # Using a Store Outside of a Component
 
-Pinia-React stores can be used inside and outside of React components. While `useStore()` is a hook designed for components, you can use the `getStore()` function for all other scenarios.
+Pinia-React stores can be used inside and outside of React components. While the generated `useAuthStore()` hook is designed for components, you can use the generated `getAuthStore()` function for all other scenarios. The generic `useStore()` and `getStore()` helpers remain available for backwards compatibility.
 
-## The `getStore` function
+## The `getAuthStore` function
 
-When you define a store, `defineStore()` returns an object containing both `useStore` (the hook) and `getStore` (a plain function).
+When you define a store with `defineStore('auth', ...)`, it generates `useAuthStore` (the hook) and `getAuthStore` (a plain function) from the store ID.
 
-The recommended pattern is to export both from your store definition file.
+The recommended pattern is to export both generated functions from your store definition file. The generic `useStore` and `getStore` helpers are also available.
 
 ```tsx title="src/stores/auth-store.ts"
 import { defineStore } from 'pinia-react'
 
-const { useStore, getStore } = defineStore('auth', {
+const { useAuthStore, getAuthStore } = defineStore('auth', {
   state: () => ({
     isAuthenticated: false,
     // ...
@@ -23,8 +23,6 @@ const { useStore, getStore } = defineStore('auth', {
   }
 })
 
-export const useAuthStore = useStore
-export const getAuthStore = getStore
 ```
 
 ## Example Usage
@@ -37,7 +35,7 @@ Here is an example of calling a store's action from a utility function:
 import { getAuthStore } from './stores/auth-store'
 
 export function performLogout() {
-  // Get the store instance by calling getStore()
+  // Get the store instance by calling getAuthStore()
   const authStore = getAuthStore()
 
   // You can now access state, getters, or actions

@@ -17,7 +17,7 @@ Here's a basic example of the Pinia-React API (to continue reading this introduc
 // stores/counter.ts
 import { defineStore } from 'pinia-react'
 
-const { useStore, getStore } = defineStore('counter', {
+const { useCounterStore, getCounterStore } = defineStore('counter', {
   state: () => {
     return { count: 0 }
   },
@@ -28,8 +28,6 @@ const { useStore, getStore } = defineStore('counter', {
   },
 })
 
-export const useCounterStore = useStore
-export const getCounterStore = getStore
 ```
 
 Then, you can **use** the store in a component:
@@ -78,7 +76,7 @@ Both Pinia-React and Zustand use an **immutable state model**, which is a best p
 ```tsx
 import { defineStore } from 'pinia-react';
 
-const { useStore } = defineStore('counter', {
+const { useCounterStore, getCounterStore } = defineStore('counter', {
   state: () => ({
     count: 0,
   }),
@@ -92,7 +90,6 @@ const { useStore } = defineStore('counter', {
   },
 });
 
-export const useCounterStore = useStore;
 ```
 
 ### Zustand

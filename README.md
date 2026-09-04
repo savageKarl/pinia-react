@@ -39,14 +39,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 ### 2. Define a Store
 
-`defineStore` returns an object containing hooks and getters.
+`defineStore` returns an object containing the default `useStore` and `getStore` helpers, as well as named helpers generated from the store ID.
 
 ```ts
 // src/stores/counter.ts
 import { defineStore } from 'pinia-react'
 
-// Return value is { useStore, getStore }
-export const counterStoreDefinition = defineStore('counter', {
+// `defineStore('counter')` also provides `useCounterStore` and `getCounterStore`
+export const { useCounterStore, getCounterStore } = defineStore('counter', {
   // State: Initial state factory
   state: () => ({
     count: 0,
@@ -75,8 +75,6 @@ export const counterStoreDefinition = defineStore('counter', {
   }
 })
 
-// Export the hook for convenience
-export const useCounterStore = counterStoreDefinition.useStore
 ```
 
 ### 3. Use in Components
@@ -146,16 +144,16 @@ useEffect(() => {
 }, [store])
 ```
 
-### `getStore` (Usage Outside Components)
+### Named `getXxxStore` Helpers (Usage Outside Components)
 
-If you need to access the store outside of a React Component (e.g., in a utility function or router), use `getStore`.
+If you need to access the store outside of a React Component (e.g., in a utility function or router), use the named `getXxxStore` helper generated from the store ID.
 
 ```ts
-import { counterStoreDefinition } from './stores/counter'
+import { getCounterStore } from './stores/counter'
 
 function logCount() {
   // Retrieves the active store instance without using Hooks
-  const store = counterStoreDefinition.getStore()
+  const store = getCounterStore()
   console.log(store.count)
 }
 ```
@@ -167,10 +165,10 @@ Types are inferred automatically. No extra configuration is needed.
 ```ts
 type CounterState = { count: number }
 
-export const useStore = defineStore('id', {
+export const { useIdStore, getIdStore } = defineStore('id', {
   state: (): CounterState => ({ count: 0 }),
   // ...
-}).useStore
+})
 ```
 
 ## Documentation
@@ -180,3 +178,4 @@ To learn more about Pinia-React, check [its documentation](https://savagekarl.gi
 ## License
 
 MIT
+

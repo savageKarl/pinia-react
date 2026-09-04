@@ -10,7 +10,7 @@ Getter 是用于根据 Store 的 State 计算衍生状态的函数。
 通过 `defineStore()` 的 `getters` 属性来定义 Getter。它们接收 `state` 作为第一个参数。
 
 ```tsx
-export const { useStore: useCounterStore } = defineStore('counter', {
+export const { useCounterStore, getCounterStore } = defineStore('counter', {
   state: () => ({
     count: 0,
   }),
@@ -25,7 +25,7 @@ export const { useStore: useCounterStore } = defineStore('counter', {
 如果要在某个 Getter 内部使用其他 Getter，你可以使用普通函数形式，并通过 `this` 访问 Store 的其他属性。在 TypeScript 中，你**必须**显式定义返回类型才能使其正常工作。
 
 ```tsx
-export const { useStore: useCounterStore } = defineStore('counter', {
+export const { useCounterStore, getCounterStore } = defineStore('counter', {
   state: () => ({
     count: 0,
   }),
@@ -59,12 +59,12 @@ export function CounterComponent() {
 
 ## 访问其他 Store 的 Getter
 
-要使用其他 Store 的 Getter，只需获取那个 Store 的实例并使用即可。请记住，在 React 组件之外的场景（例如在另一个 Store 的逻辑中），需要使用 `getStore` 函数。
+要使用其他 Store 的 Getter，只需获取那个 Store 的实例并使用即可。请记住，在 React 组件之外的场景（例如在另一个 Store 的逻辑中），应使用自动生成的 `getOtherStore` 函数。原有的 `getStore` 方法仍然可以使用。
 
 ```tsx
 import { getOtherStore } from './other-store'
 
-export const { useStore: useMainStore } = defineStore('main', {
+export const { useMainStore, getMainStore } = defineStore('main', {
   state: () => ({
     localData: 'hello'
   }),

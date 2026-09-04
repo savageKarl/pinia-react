@@ -6,7 +6,7 @@ import type {
   PiniaPluginContext,
   StateTree,
   Store,
-  StoreDefinition,
+  StoreDefinitionWithNames,
   StoreScope,
   SubscriptionCallback,
   TransformActions
@@ -44,7 +44,7 @@ export function defineStore<
   S extends StateTree,
   G extends Record<string, any> = {},
   A extends Record<string, any> = {}
->(id: Id, options: DefineStoreOptions<S, G, A>): StoreDefinition<Id, S, G, A> {
+>(id: Id, options: DefineStoreOptions<S, G, A>): StoreDefinitionWithNames<Id, S, G, A> {
   const getters = options.getters || ({} as G)
 
   function resolveGetterDependencies(
@@ -431,5 +431,15 @@ export function defineStore<
     return trackingProxy as Store<Id, S, G, A>
   }
 
-  return { useStore, getStore }
+  const storeName = (id.charAt(0).toUpperCase() + id.slice(1)) as Capitalize<Id>
+
+  const definition: StoreDefinitionWithNames<Id, S, G, A> = Object.assign(
+    { useStore, getStore },
+    {
+      [`use${storeName}Store`]: useStore,
+      [`get${storeName}Store`]: getStore
+    }
+  ) as unknown as StoreDefinitionWithNames<Id, S, G, A>
+
+  return definition
 }

@@ -18,7 +18,7 @@
   },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged",
-    "commit-msg": "bunx --no-install commitlint --edit \"$1\""
+    "commit-msg": "npx --no-install commitlint --edit \"$1\""
   },
   "lint-staged": {
     "*.{js,ts,tsx,jsx,mjs,cjs}": "biome check --write",
