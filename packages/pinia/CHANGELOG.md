@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.1.0
+
+### Minor Changes
+
+- 44b45e2: feat: add named store helpers generated from store id
+
+  - generate `useXxxStore` and `getXxxStore` from the store id
+  - preserve the existing `useStore` and `getStore` APIs
+  - update documentation and examples for the new API
+  - add TypeScript coverage for named store helpers
+
 ## 2.0.0
 
 ### Major Changes
