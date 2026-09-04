@@ -27,7 +27,10 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          registry-url: https://registry.npmjs.org
+          registry-url: https://registry.npmjs.org 
+          
+      - name: Upgrade npm to support OIDC
+        run: npm install -g npm@latest
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
@@ -36,7 +39,7 @@ jobs:
 
       - run: npx changeset publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
