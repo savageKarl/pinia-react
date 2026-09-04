@@ -88,3 +88,23 @@ export interface StoreDefinition<
   useStore: () => Store<Id, S, G, A>
   getStore: () => Store<Id, S, G, A>
 }
+
+type NamedStoreDefinition<
+  Id extends string,
+  S extends StateTree,
+  G extends Record<string, any>,
+  A extends Record<string, any>
+> = string extends Id
+  ? {}
+  : {
+      [K in `use${Capitalize<Id>}Store`]: () => Store<Id, S, G, A>
+    } & {
+      [K in `get${Capitalize<Id>}Store`]: () => Store<Id, S, G, A>
+    }
+
+export type StoreDefinitionWithNames<
+  Id extends string,
+  S extends StateTree,
+  G extends Record<string, any>,
+  A extends Record<string, any>
+> = StoreDefinition<Id, S, G, A> & NamedStoreDefinition<Id, S, G, A>

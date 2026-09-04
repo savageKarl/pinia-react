@@ -5,14 +5,12 @@ Store 使用 `defineStore()` 进行定义。它的第一个参数是一个唯一
 ```tsx
 import { defineStore } from 'pinia-react'
 
-// `defineStore()` 返回一个包含 `useStore` 和 `getStore` 的对象。
-// 常见的模式是将它们导出，以便在整个应用程序中使用。
-const { useStore, getStore } = defineStore('alerts', {
+// `defineStore()` 会根据 Store ID 自动生成命名函数。
+// 对于 `alerts`，生成的函数是 `useAlertsStore` 和 `getAlertsStore`。
+const { useAlertsStore, getAlertsStore } = defineStore('alerts', {
   // 其他配置...
 })
 
-export const useAlertsStore = useStore
-export const getAlertsStore = getStore
 ```
 
 按照惯例，建议导出的 Hook 名称以 `use` 开头并以 `Store` 结尾（例如 `useUserStore`, `useCartStore`）。这符合 React Hooks 的命名规范。
@@ -22,7 +20,7 @@ export const getAlertsStore = getStore
 你需要通过传递一个包含 `state`、`getters` 和 `actions` 属性的选项对象来定义 Store 的配置。
 
 ```tsx
-export const { useStore: useCounterStore, getStore: getCounterStore } = defineStore('counter', {
+export const { useCounterStore, getCounterStore } = defineStore('counter', {
   state: () => ({ count: 0, name: 'Eduardo' }),
   getters: {
     doubleCount: (state) => state.count * 2,

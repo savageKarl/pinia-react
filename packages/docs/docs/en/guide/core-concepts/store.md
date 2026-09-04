@@ -5,14 +5,12 @@ A Store is defined using `defineStore()`. Its first parameter is a unique ID tha
 ```tsx
 import { defineStore } from 'pinia-react'
 
-// `defineStore()` returns an object containing `useStore` and `getStore`.
-// It's a common pattern to export them for use throughout your application.
-const { useStore, getStore } = defineStore('alerts', {
+// `defineStore()` generates named helpers from the store ID.
+// For `alerts`, the generated helpers are `useAlertsStore` and `getAlertsStore`.
+const { useAlertsStore, getAlertsStore } = defineStore('alerts', {
   // Other configurations...
 })
 
-export const useAlertsStore = useStore
-export const getAlertsStore = getStore
 ```
 
 It's recommended to name the exported hook starting with `use` and ending with `Store` (e.g., `useUserStore`, `useCartStore`). This follows standard React Hook conventions.
@@ -22,7 +20,7 @@ It's recommended to name the exported hook starting with `use` and ending with `
 You define a store's configuration by passing an options object with `state`, `getters`, and `actions` properties.
 
 ```tsx
-export const { useStore: useCounterStore, getStore: getCounterStore } = defineStore('counter', {
+export const { useCounterStore, getCounterStore } = defineStore('counter', {
   state: () => ({ count: 0, name: 'Eduardo' }),
   getters: {
     doubleCount: (state) => state.count * 2,

@@ -12,7 +12,7 @@ State 被定义为一个返回初始状态对象的函数。
 ```tsx
 import { defineStore } from 'pinia-react'
 
-const { useStore, getStore } = defineStore('storeId', {
+const { useStore, getStore } = defineStore('counter', {
   // 推荐使用箭头函数以获得完整的类型推导
   state: () => {
     return {
@@ -37,7 +37,7 @@ interface UserInfo {
   age: number
 }
 
-const { useStore, getStore } = defineStore('storeId', {
+const { useStore, getStore } = defineStore('counter', {
   state: () => {
     return {
       userList: [] as UserInfo[],
@@ -55,7 +55,7 @@ interface State {
   user: UserInfo | null
 }
 
-const { useStore, getStore } = defineStore('storeId', {
+const { useStore, getStore } = defineStore('counter', {
   state: (): State => {
     return {
       userList: [],
@@ -88,7 +88,7 @@ function MyComponent() {
 在 Store 自己的 Action 或 Getter 中，使用 `this` 关键字来访问 State 和其他 Store 属性。
 
 ```tsx
-defineStore('storeId', {
+defineStore('counter', {
   state: () => ({ count: 0 }),
   actions: {
     increment() {
@@ -104,7 +104,7 @@ defineStore('storeId', {
 你可以通过调用 Store 的 `$reset()` 方法将 State 重置为初始值。
 
 ```tsx
-const store = useStore()
+const store = useCounterStore()
 store.$reset()
 ```
 

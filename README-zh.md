@@ -39,14 +39,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 ### 2. 定义 Store
 
-`defineStore` 返回一个包含 `useStore` Hook 和 `getStore` 方法的对象。
+`defineStore` 返回一个包含默认的 `useStore` Hook 和 `getStore` 方法的对象，同时会根据 Store ID 自动生成对应的命名方法。
 
 ```ts
 // src/stores/counter.ts
 import { defineStore } from 'pinia-react'
 
-// 返回值结构为 { useStore, getStore }
-export const counterStoreDefinition = defineStore('counter', {
+// `defineStore('counter')` 同时提供 `useCounterStore` 和 `getCounterStore`
+export const { useCounterStore, getCounterStore } = defineStore('counter', {
   // State: 返回初始状态的函数
   state: () => ({
     count: 0,
@@ -75,8 +75,6 @@ export const counterStoreDefinition = defineStore('counter', {
   }
 })
 
-// 导出 Hook 供组件使用
-export const useCounterStore = counterStoreDefinition.useStore
 ```
 
 ### 3. 在组件中使用
@@ -151,16 +149,16 @@ useEffect(() => {
 }, [store])
 ```
 
-### `getStore` (在组件外部使用)
+### 命名 `getXxxStore` 方法 (在组件外部使用)
 
-如果你需要在 React 组件之外（例如路由守卫、纯工具函数或 API 拦截器）访问 Store，请使用 `getStore`。
+如果你需要在 React 组件之外（例如路由守卫、纯工具函数或 API 拦截器）访问 Store，可以使用根据 Store ID 自动生成的命名 `getXxxStore` 方法。
 
 ```ts
-import { counterStoreDefinition } from './stores/counter'
+import { getCounterStore } from './stores/counter'
 
 function logCount() {
   // 不使用 Hook 获取当前活跃的 store 实例
-  const store = counterStoreDefinition.getStore()
+  const store = getCounterStore()
   console.log(store.count)
 }
 ```
@@ -172,7 +170,7 @@ function logCount() {
 ```ts
 type CounterState = { count: number }
 
-export const { useStore } = defineStore('id', {
+export const { useIdStore, getIdStore } = defineStore('id', {
   state: (): CounterState => ({ count: 0 }),
   // actions 和 getters 的类型会自动推导
 })
