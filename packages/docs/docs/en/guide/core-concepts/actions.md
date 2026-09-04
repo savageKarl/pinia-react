@@ -11,7 +11,7 @@ Actions are methods used to modify the **State**. They are where your business l
 Define actions via the `actions` property in `defineStore()`.
 
 ```tsx
-export const { useStore: useCounterStore } = defineStore('main', {
+export const { useCounterStore } = defineStore('main', {
   state: () => ({
     count: 0,
   }),
@@ -35,7 +35,7 @@ import { mande } from 'mande';
 
 const api = mande('/api/users');
 
-export const { useStore: useUsersStore } = defineStore('users', {
+export const { useUsersStore } = defineStore('users', {
   state: () => ({
     userData: null,
   }),
@@ -74,7 +74,7 @@ To use another store's actions or state, simply get its instance within an actio
 ```tsx
 import { getAuthStore } from './auth-store';
 
-export const { useStore: useSettingsStore } = defineStore('settings', {
+export const { useSettingsStore } = defineStore('settings', {
   state: () => ({
     preferences: null,
   }),
