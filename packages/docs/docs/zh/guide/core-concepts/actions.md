@@ -11,7 +11,7 @@ Action 是用于修改 **State（状态）** 的方法。它们是你存放业�
 通过 `defineStore()` 的 `actions` 属性来定义 Action。
 
 ```tsx
-export const { useStore: useCounterStore } = defineStore('main', {
+export const { useCounterStore } = defineStore('main', {
   state: () => ({
     count: 0,
   }),
@@ -35,7 +35,7 @@ import { mande } from 'mande';
 
 const api = mande('/api/users');
 
-export const { useStore: useUsersStore } = defineStore('users', {
+export const { useUsersStore } = defineStore('users', {
   state: () => ({
     userData: null,
   }),
@@ -74,7 +74,7 @@ export function App() {
 ```tsx
 import { getAuthStore } from './auth-store';
 
-export const { useStore: useSettingsStore } = defineStore('settings', {
+export const { useSettingsStore } = defineStore('settings', {
   state: () => ({
     preferences: null,
   }),
