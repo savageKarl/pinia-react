@@ -35,5 +35,8 @@ jobs:
       - name: Run Lint, Format & Test Check
         run: pnpm run check && pnpm run test && pnpm run test-dts
 
+      - name: Verify Changeset
+        run: npx changeset status --since=origin/main
+
       - name: Build
         run: pnpm run build
