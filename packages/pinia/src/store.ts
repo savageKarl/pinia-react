@@ -85,7 +85,7 @@ export function defineStore<
     const localScope: StoreScope = {
       currentState: initialState,
       listeners: new Set(),
-      getterCache: new Map(),
+      getterResultCache: new Map(),
       getterDependencies: new Map(),
       subscribers: new Map(),
       createStoreProxy: (_onAccess?: (path: string[]) => void) => storePublicApi as any
@@ -102,8 +102,8 @@ export function defineStore<
         if (!subscriberScope) return
         let shouldNotify = false
         getterKeys.forEach((key) => {
-          if (subscriberScope.getterCache.has(key)) {
-            subscriberScope.getterCache.delete(key)
+          if (subscriberScope.getterResultCache.has(key)) {
+            subscriberScope.getterResultCache.delete(key)
             shouldNotify = true
           }
         })
@@ -156,7 +156,7 @@ export function defineStore<
       localScope.getterDependencies.forEach((_deps, getterName) => {
         const resolvedDeps = resolveGetterDependencies(getterName, localScope.getterDependencies)
         if (isAffected(patches, resolvedDeps)) {
-          localScope.getterCache.delete(getterName)
+          localScope.getterResultCache.delete(getterName)
         }
       })
     }
@@ -209,7 +209,7 @@ export function defineStore<
 
           if (strKey in getters) {
             onAccess?.([strKey])
-            if (localScope.getterCache.has(strKey)) return localScope.getterCache.get(strKey)
+            if (localScope.getterResultCache.has(strKey)) return localScope.getterResultCache.get(strKey)
             if (isGetterComputing.has(strKey)) {
               console.warn(`[pinia-react] Circular dependency detected in getter "${strKey}"`)
               return undefined
@@ -231,7 +231,7 @@ export function defineStore<
               const result = (getters as any)[strKey].call(trackingProxyForThis, trackingStateProxy)
 
               localScope.getterDependencies.set(strKey, dependencies)
-              localScope.getterCache.set(strKey, result)
+              localScope.getterResultCache.set(strKey, result)
               return result
             } finally {
               activeListenerId = prevListenerId
@@ -318,7 +318,7 @@ export function defineStore<
               const oldState = localScope.currentState as S
               localScope.currentState = newState
               pinia.state[id] = newState
-              localScope.getterCache.clear()
+              localScope.getterResultCache.clear()
               emit(newState, oldState, [])
               isTimeTraveling = false
               break
@@ -337,7 +337,7 @@ export function defineStore<
               const oldState = localScope.currentState as S
               localScope.currentState = newState
               pinia.state[id] = newState
-              localScope.getterCache.clear()
+              localScope.getterResultCache.clear()
               emit(newState, oldState, [])
               isTimeTraveling = false
               break
@@ -399,7 +399,7 @@ export function defineStore<
           for (const path of trackedPaths.current) {
             const topKey = path.split('.')[0]
             if (topKey in getters) {
-              if (!currentScope.getterCache.has(topKey)) {
+              if (!currentScope.getterResultCache.has(topKey)) {
                 shouldUpdate = true
                 break
               }

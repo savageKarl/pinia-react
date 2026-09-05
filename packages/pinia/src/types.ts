@@ -50,7 +50,7 @@ export interface DefineStoreOptions<S extends StateTree, G extends Record<string
 export type StoreScope = {
   currentState: StateTree
   listeners: Set<(state: any, prev: any, patches: Patch[]) => void>
-  getterCache: Map<string, any>
+  getterResultCache: Map<string, any>
   getterDependencies: Map<string, Set<string>>
   subscribers: Map<string, Set<string>>
   createStoreProxy: (onAccess?: (path: string[]) => void) => StoreGeneric
