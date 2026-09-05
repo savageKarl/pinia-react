@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.1
+
+### Patch Changes
+
+- f765b09: docs: update coding example
+
 ## 2.1.0
 
 ### Minor Changes
