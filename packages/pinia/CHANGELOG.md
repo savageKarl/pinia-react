@@ -79,7 +79,7 @@
 
   - **Vue-related Types Removed**: All types from `@maoism/runtime-core` (e.g., `Ref`, `UnwrapRef`, `ComputedRef`, `_GettersTree`, `_ActionsTree`) have been eliminated.
   - **Immer Types Introduced**: Core types now include `Draft` and `Patch` from Immer.
-  - **New `StoreScope` Type**: A new `StoreScope` interface encapsulates the entire state of a store instance (`currentState`, `listeners`, `getterCache`, `getterDependencies`, etc.), simplifying the internal architecture. The global `pinia._scopes` map holds these scopes.
+  - **New `StoreScope` Type**: A new `StoreScope` interface encapsulates the entire state of a store instance (`currentState`, `listeners`, `getterResultCache`, `getterDependencies`, etc.), simplifying the internal architecture. The global `pinia._scopes` map holds these scopes.
   - **Simplified Public Types**: The overall type surface area is greatly reduced, making the library easier to understand, extend, and maintain.
 
 ## [1.5.2](https://github.com/savageKarl/pinia-react/compare/v1.5.2-beta.2...v1.5.2) (2025-11-22)
