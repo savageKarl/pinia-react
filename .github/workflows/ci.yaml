@@ -8,9 +8,10 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+
     permissions:
-      contents: write
-      issues: write
+      contents: read
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,6 +37,7 @@ jobs:
         run: pnpm run check && pnpm run test && pnpm run test-dts
 
       - name: Verify Changeset
+        if: ${{ !startsWith(github.head_ref, 'changeset-release/') }}
         run: npx changeset status --since=origin/main
 
       - name: Build
