@@ -5,13 +5,13 @@
   "scripts": {
     "prepare": "npx simple-git-hooks",
     "dev": "pnpm --filter pinia-react dev",
-    "build": "pnpm --filter pinia-react build",
-    "playground-react": "pnpm --filter playground-react dev",
-    "playground-nextjs": "pnpm --filter playground-nextjs dev",
-    "test": "vitest run",
-    "test-dts": "pnpm --filter pinia-react test-dts",
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
+    "test-dts": "pnpm -r --if-present test-dts",
     "check": "biome check",
     "format": "biome check --write",
+    "playground-react": "pnpm --filter playground-react dev",
+    "playground-nextjs": "pnpm --filter playground-nextjs dev",
     "docs-dev": "pnpm --filter docs dev",
     "docs-build": "pnpm --filter docs build",
     "docs-preview": "pnpm --filter docs preview"
