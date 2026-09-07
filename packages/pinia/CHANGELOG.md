@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.2
+
+### Patch Changes
+
+- b68d6de: Extract devtools logic as a standalone plugin.
+
 ## 2.1.1
 
 ### Patch Changes
