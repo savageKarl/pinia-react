@@ -3,7 +3,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "prepare": "npx simple-git-hooks",
+    "prepare": "pnpm exec simple-git-hooks",
     "dev": "pnpm --filter pinia-react dev",
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
@@ -17,8 +17,8 @@
     "docs-preview": "pnpm --filter docs preview"
   },
   "simple-git-hooks": {
-    "pre-commit": "npx lint-staged",
-    "commit-msg": "npx --no-install commitlint --edit \"$1\""
+    "pre-commit": "pnpm exec lint-staged",
+    "commit-msg": "pnpm exec commitlint --edit \"$1\""
   },
   "lint-staged": {
     "*.{js,ts,tsx,jsx,mjs,cjs}": "biome check --write",
