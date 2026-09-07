@@ -2,6 +2,33 @@ import type { Draft, Patch } from 'immer'
 
 export type StateTree = Record<string, any>
 
+export type MutationType = 'action' | 'patch' | 'reset' | 'restore'
+
+/** Metadata describing why a state transition was committed. */
+export interface MutationMeta {
+  type: MutationType
+  origin?: string
+  action?: string
+  args?: unknown[]
+}
+
+/** A committed state transition, intended for Pinia plugins. */
+export interface MutationEvent<S extends StateTree = StateTree> {
+  storeId: string
+  store: StoreGeneric
+  state: S
+  prevState: S
+  patches: Patch[]
+  meta: MutationMeta
+}
+
+export type MutationListener = (event: MutationEvent) => void
+
+export interface RestoreStateOptions {
+  type?: Extract<MutationType, 'restore' | 'reset'>
+  origin?: string
+}
+
 export type TransformGetters<G> = {
   [K in keyof G]: G[K] extends (...args: any[]) => infer R ? R : never
 }
@@ -41,7 +68,11 @@ export type GettersImplementation<S> = {
   [K in string]: (state: S) => any
 }
 
-export interface DefineStoreOptions<S extends StateTree, G extends Record<string, any>, A extends Record<string, any>> {
+/** Extension point for store-option plugins. */
+export interface DefineStoreOptionsBase<S extends StateTree, Store> {}
+
+export interface DefineStoreOptions<S extends StateTree, G extends Record<string, any>, A extends Record<string, any>>
+  extends DefineStoreOptionsBase<S, Store<string, S, G, A>> {
   state: () => S
   getters?: G & ThisType<GetterContext<S, G>> & GettersImplementation<S>
   actions?: A & ThisType<ActionContext<S, G, A>>
@@ -59,9 +90,12 @@ export type StoreScope = {
 export interface Pinia {
   state: Record<string, StateTree>
   use(plugin: PiniaPlugin): Pinia
+  /** Subscribe to committed mutations from every store in this Pinia instance. */
+  onMutation(listener: MutationListener): () => void
   _p: PiniaPlugin[]
   _s: Map<string, StoreGeneric>
   _scopes: Map<string, StoreScope>
+  _m: Set<MutationListener>
 }
 
 export interface PiniaPlugin {
@@ -77,6 +111,9 @@ export type PiniaPluginContext<
   id: Id
   store: Store<Id, S, G, A>
   options: DefineStoreOptions<S, G, A>
+  pinia: Pinia
+  /** A plugin-only, fully controlled state replacement operation. */
+  restoreState: (state: S, options?: RestoreStateOptions) => void
 }
 
 export interface StoreDefinition<

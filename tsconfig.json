@@ -18,7 +18,8 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "pinia-react": ["packages/pinia/src"]
+      "pinia-react": ["packages/pinia/src"],
+      "@pinia-react/devtools": ["packages/devtools/src"]
     }
   },
   "include": ["packages"],

@@ -3,7 +3,10 @@ import { useCallback, useRef, useSyncExternalStore } from 'react'
 import { getActivePinia } from './rootStore'
 import type {
   DefineStoreOptions,
+  MutationEvent,
+  MutationMeta,
   PiniaPluginContext,
+  RestoreStateOptions,
   StateTree,
   Store,
   StoreDefinitionWithNames,
@@ -79,8 +82,6 @@ export function defineStore<
     const initialState = options.state()
 
     let storePublicApi: Store<Id, S, G, A>
-    let devTools: any
-    let isTimeTraveling = false
 
     const localScope: StoreScope = {
       currentState: initialState,
@@ -118,9 +119,7 @@ export function defineStore<
       })
     }
 
-    const internalPatch = (updater: (draft: Draft<S>) => void | S, actionName: string, isReset = false) => {
-      if (isTimeTraveling) return
-
+    const internalPatch = (updater: (draft: Draft<S>) => void | S, meta: MutationMeta) => {
       const oldState = localScope.currentState as S
       let patches: Patch[] = []
 
@@ -128,23 +127,39 @@ export function defineStore<
         patches = p
       }) as S
 
-      if (patches.length > 0 || isReset) {
+      if (patches.length > 0 || meta.type === 'reset') {
         localScope.currentState = nextState
         pinia.state[id] = nextState
-        if (devTools) {
-          devTools.send({ type: actionName, payload: patches }, nextState)
-        }
         emit(nextState, oldState, patches)
+        const event: MutationEvent<S> = {
+          storeId: id,
+          store: storePublicApi as any,
+          state: nextState,
+          prevState: oldState,
+          patches,
+          meta
+        }
+        pinia._m.forEach((listener) => listener(event))
       }
     }
 
     const $patch = (updater: (draft: Draft<S>) => void) => {
-      internalPatch((draft) => {
-        updater(draft)
-      }, '@patch')
+      internalPatch(
+        (draft) => {
+          updater(draft)
+        },
+        { type: 'patch' }
+      )
     }
 
-    const $reset = () => internalPatch(() => options.state(), '@reset', true)
+    const $reset = () => internalPatch(() => options.state(), { type: 'reset' })
+
+    const restoreState = (state: S, options: RestoreStateOptions = {}) => {
+      internalPatch(() => state, {
+        type: options.type ?? 'restore',
+        origin: options.origin
+      })
+    }
 
     const $subscribe = (callback: SubscriptionCallback<S>) => {
       const listener = (state: S, prev: S) => callback(state, prev)
@@ -283,7 +298,7 @@ export function defineStore<
           })
           returnValue = originalAction.apply(actionContextProxy, args)
         }
-        internalPatch(recipe, actionName)
+        internalPatch(recipe, { type: 'action', action: actionName, args })
         return returnValue
       }
     })
@@ -291,71 +306,19 @@ export function defineStore<
     localScope.createStoreProxy = createStoreProxy as any
 
     pinia._p.forEach((plugin) => {
-      const pluginResult = plugin({ id, store: storePublicApi, options } as PiniaPluginContext)
+      const pluginResult = plugin({
+        id,
+        store: storePublicApi,
+        options,
+        pinia,
+        restoreState
+      } as PiniaPluginContext)
       if (pluginResult) {
         Object.defineProperties(proxyTarget, Object.getOwnPropertyDescriptors(pluginResult))
       }
     })
 
     pinia._s.set(id, storePublicApi as any)
-
-    if (typeof window !== 'undefined' && (window as any).__REDUX_DEVTOOLS_EXTENSION__) {
-      devTools = (window as any).__REDUX_DEVTOOLS_EXTENSION__.connect({ name: id })
-      devTools.init(localScope.currentState)
-
-      devTools.subscribe((message: any) => {
-        if (message.type === 'DISPATCH') {
-          const payloadType = message.payload?.type
-
-          switch (payloadType) {
-            case 'JUMP_TO_STATE':
-            case 'JUMP_TO_ACTION':
-            case 'IMPORT_STATE': {
-              const newState = typeof message.state === 'string' ? JSON.parse(message.state) : message.state
-              if (!newState || typeof newState !== 'object') return
-
-              isTimeTraveling = true
-              const oldState = localScope.currentState as S
-              localScope.currentState = newState
-              pinia.state[id] = newState
-              localScope.getterResultCache.clear()
-              emit(newState, oldState, [])
-              isTimeTraveling = false
-              break
-            }
-
-            case 'COMMIT': {
-              devTools.init(localScope.currentState)
-              break
-            }
-
-            case 'ROLLBACK': {
-              const newState = typeof message.state === 'string' ? JSON.parse(message.state) : message.state
-              if (!newState || typeof newState !== 'object') return
-
-              isTimeTraveling = true
-              const oldState = localScope.currentState as S
-              localScope.currentState = newState
-              pinia.state[id] = newState
-              localScope.getterResultCache.clear()
-              emit(newState, oldState, [])
-              isTimeTraveling = false
-              break
-            }
-
-            case 'RESET': {
-              const originalState = options.state()
-              devTools.init(originalState)
-              internalPatch(() => originalState, '@reset', true)
-              break
-            }
-
-            default:
-              break
-          }
-        }
-      })
-    }
 
     return storePublicApi
   }

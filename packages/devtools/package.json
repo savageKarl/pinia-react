@@ -1,0 +1,53 @@
+{
+  "name": "@pinia-react/devtools",
+  "version": "0.0.1",
+  "description": "Redux DevTools Extension plugin for pinia-react",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://github.com/savageKarl/pinia-react#readme",
+  "bugs": {
+    "url": "https://github.com/savageKarl/pinia-react/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/savageKarl/pinia-react.git"
+  },
+  "author": "savageKarl <shan.revolt@gmail.com>",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "react",
+    "pinia-react",
+    "redux-devtools",
+    "devtools",
+    "state-management"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "dev": "tsup --watch",
+    "build": "tsup",
+    "test": "vitest",
+    "test-dts": "tsc -p ./test-dts/tsconfig.json"
+  },
+  "peerDependencies": {
+    "pinia-react": "^2.1.1"
+  },
+  "devDependencies": {
+    "pinia-react": "workspace:*"
+  }
+}
