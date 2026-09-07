@@ -1,6 +1,6 @@
 {
   "name": "@pinia-react/devtools",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Redux DevTools Extension plugin for pinia-react",
   "type": "module",
   "main": "./dist/index.js",
@@ -45,7 +45,7 @@
     "test-dts": "tsc -p ./test-dts/tsconfig.json"
   },
   "peerDependencies": {
-    "pinia-react": "^2.1.1"
+    "pinia-react": "^2.1.2"
   },
   "devDependencies": {
     "pinia-react": "workspace:*"
