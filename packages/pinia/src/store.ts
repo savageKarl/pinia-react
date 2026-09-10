@@ -8,6 +8,7 @@ import type {
   Pinia,
   PiniaPluginContext,
   RestoreStateOptions,
+  StatePath,
   StateTree,
   Store,
   StoreDefinitionWithNames,
@@ -26,9 +27,9 @@ let activeGetterKey: string | null = null
 
 const storeDefinitionByPinia = new WeakMap<Pinia, Map<string, unknown>>()
 
-function isAffected(patches: Patch[], trackedPaths: Set<string>): boolean {
+function isAffected(patches: Patch[], trackedPaths: Set<StatePath>): boolean {
   if (trackedPaths.size === 0) return false
-  const tracked = Array.from(trackedPaths).map((p) => p.split('.'))
+  const tracked = Array.from(trackedPaths)
 
   for (const patch of patches) {
     const patchPath = patch.path.map(String)
@@ -75,23 +76,24 @@ export function defineStore<
 
   function resolveGetterDependencies(
     getterName: string,
-    getterDepsMap: Map<string, Set<string>>,
+    getterDepsMap: Map<string, Set<StatePath>>,
     visited = new Set<string>()
-  ): Set<string> {
+  ): Set<StatePath> {
     if (visited.has(getterName)) {
       console.warn(`[pinia-react] Circular dependency in getters detected involving: ${getterName}`)
       return new Set()
     }
     visited.add(getterName)
 
-    const finalDeps = new Set<string>()
+    const finalDeps = new Set<StatePath>()
     const directDeps = getterDepsMap.get(getterName)
 
     if (!directDeps) return finalDeps
 
     for (const dep of directDeps) {
-      if (dep in getters) {
-        const nestedDeps = resolveGetterDependencies(dep, getterDepsMap, visited)
+      const getterKey = dep.length === 1 ? dep[0] : undefined
+      if (getterKey && getterKey in getters) {
+        const nestedDeps = resolveGetterDependencies(getterKey, getterDepsMap, visited)
         nestedDeps.forEach((d) => finalDeps.add(d))
       } else {
         finalDeps.add(dep)
@@ -112,7 +114,7 @@ export function defineStore<
       getterResultCache: new Map(),
       getterDependencies: new Map(),
       subscribers: new Map(),
-      createStoreProxy: (_onAccess?: (path: string[]) => void) => storePublicApi as any
+      createStoreProxy: (_onAccess?: (path: StatePath) => void) => storePublicApi as any
     }
     pinia._scopes.set(id, localScope)
 
@@ -214,7 +216,7 @@ export function defineStore<
 
     const readonlyWarning = () => {
       console.warn(`[${id}] Store is read-only. Use actions for mutations.`)
-      return false
+      throw new TypeError(`[${id}] Store is read-only. Use actions for mutations.`)
     }
 
     const createReadonlyStateProxy = (stateTarget: any): any => {
@@ -234,25 +236,25 @@ export function defineStore<
       return proxy
     }
 
-    const getAtPath = (path: string[]) => {
+    const getAtPath = (path: StatePath) => {
       let value: any = localScope.currentState
       for (const key of path) value = value[key]
       return value
     }
 
-    const setAtPath = (draft: Draft<S>, path: string[], value: unknown) => {
+    const setAtPath = (draft: Draft<S>, path: StatePath, value: unknown) => {
       let target: any = draft
       for (let i = 0; i < path.length - 1; i++) target = target[path[i]]
       target[path[path.length - 1]] = value
     }
 
-    const deleteAtPath = (draft: Draft<S>, path: string[]) => {
+    const deleteAtPath = (draft: Draft<S>, path: StatePath) => {
       let target: any = draft
       for (let i = 0; i < path.length - 1; i++) target = target[path[i]]
       delete target[path[path.length - 1]]
     }
 
-    const createActionStateProxy = (path: string[], meta: MutationMeta): any => {
+    const createActionStateProxy = (path: StatePath, meta: MutationMeta): any => {
       return new Proxy(Array.isArray(getAtPath(path)) ? [] : {}, {
         get(_target, key, receiver) {
           const current = getAtPath(path)
@@ -271,11 +273,11 @@ export function defineStore<
       })
     }
 
-    function createStoreProxy(onAccess?: (path: string[]) => void): Store<Id, S, G, A> {
+    function createStoreProxy(onAccess?: (path: StatePath) => void): Store<Id, S, G, A> {
       const createStateProxy = (
         stateTarget: any,
-        path: string[],
-        onDeepAccess?: (path: string[]) => void,
+        path: StatePath,
+        onDeepAccess?: (path: StatePath) => void,
         trackObjectAccess = false
       ): any => {
         return new Proxy(stateTarget, {
@@ -303,6 +305,7 @@ export function defineStore<
             onAccess?.(['$state'])
             return createReadonlyStateProxy(localScope.currentState)
           }
+          if (strKey === '$id') return id
           if (strKey === '$patch') return $patch
           if (strKey === '$reset') return $reset
           if (strKey === '$subscribe') return $subscribe
@@ -326,15 +329,15 @@ export function defineStore<
             }
 
             isGetterComputing.add(strKey)
-            const dependencies = new Set<string>()
+            const dependencies = new Set<StatePath>()
             const prevListenerId = activeListenerId
             const prevGetterKey = activeGetterKey
             activeListenerId = id
             activeGetterKey = strKey
 
             try {
-              const onGetterAccess = (path: string[]) => {
-                dependencies.add(path[0])
+              const onGetterAccess = (path: StatePath) => {
+                dependencies.add(path)
               }
               const trackingProxyForThis = createStoreProxy(onGetterAccess)
               const trackingStateProxy = createStateProxy(state, [], onGetterAccess, true)
@@ -362,6 +365,7 @@ export function defineStore<
             console.warn(`[${id}] Do not replace "$state" directly. Use "$patch()" to replace the whole state.`)
             return false
           }
+          if (strKey === '$id') return readonlyWarning()
           if (strKey in localScope.currentState || strKey in getters || strKey in wrappedActions) {
             return readonlyWarning()
           }
@@ -459,7 +463,7 @@ export function defineStore<
     ensureStoreInstance(pinia)
     const currentScope = pinia._scopes.get(id)!
 
-    const trackedPaths = useRef(new Set<string>())
+    const trackedPaths = useRef(new Set<StatePath>())
     trackedPaths.current.clear()
 
     const subscribe = useCallback(
@@ -467,12 +471,12 @@ export function defineStore<
         const listener = (_state: S, _prevState: S, patches: Patch[]) => {
           let shouldUpdate = false
           for (const path of trackedPaths.current) {
-            if (path === '$state') {
+            if (path.length === 1 && path[0] === '$state') {
               shouldUpdate = patches.length > 0
               if (shouldUpdate) break
             }
-            const topKey = path.split('.')[0]
-            if (topKey in getters) {
+            const topKey = path[0]
+            if (path.length === 1 && topKey in getters) {
               if (!currentScope.getterResultCache.has(topKey)) {
                 shouldUpdate = true
                 break
@@ -499,7 +503,7 @@ export function defineStore<
     useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
     const trackingProxy = currentScope.createStoreProxy((path) => {
-      trackedPaths.current.add(path.join('.'))
+      trackedPaths.current.add(path)
     })
 
     return trackingProxy as Store<Id, S, G, A>

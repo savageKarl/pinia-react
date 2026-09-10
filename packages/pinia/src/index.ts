@@ -15,6 +15,7 @@ export type {
   PiniaPlugin,
   PiniaPluginContext,
   RestoreStateOptions,
+  StatePath,
   StateTree,
   Store,
   StoreDefinition,
