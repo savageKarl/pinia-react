@@ -6,7 +6,7 @@ Key features:
 - **Reactive**: Built on `useSyncExternalStore` for concurrent rendering support.
 - **Efficient**: Fine-grained dependency tracking. Components only re-render when used properties change.
 - **Intuitive**: Write actions with mutable syntax (thanks to Immer) but get immutable state updates.
-- **DevTools**: Integrated with Redux DevTools Extension.
+- **DevTools**: Optional Redux DevTools integration through the separate `@pinia-react/devtools` plugin.
 
 ## Installation
 
@@ -171,6 +171,34 @@ export const { useIdStore, getIdStore } = defineStore('id', {
 })
 ```
 
+## DevTools
+
+DevTools support is provided by the optional `@pinia-react/devtools` package. It integrates opted-in stores with the Redux DevTools Extension; it is not a Vue Devtools integration.
+
+```bash
+pnpm add -D @pinia-react/devtools
+```
+
+Register the plugin before any store is created, then enable the stores you want to inspect:
+
+```ts
+import { createPinia, defineStore } from 'pinia-react'
+import { devtoolsPlugin } from '@pinia-react/devtools'
+
+const pinia = createPinia()
+pinia.use(devtoolsPlugin({ name: 'My App' }))
+
+export const { useCounterStore } = defineStore('counter', {
+  state: () => ({ count: 0 }),
+  devtools: {
+    enabled: true,
+    name: 'Counter'
+  }
+})
+```
+
+The plugin reports actions, `$patch()` calls, and `$reset()` calls. Redux DevTools can inspect state and perform jump, rollback, reset, commit, and state import operations. See the [DevTools guide](https://savagekarl.github.io/pinia-react/guide/plugins/devtools) for configuration and limitations.
+
 ## Documentation
 
 To learn more about Pinia-React, check [its documentation](https://savagekarl.github.io/pinia-react).
@@ -178,4 +206,3 @@ To learn more about Pinia-React, check [its documentation](https://savagekarl.gi
 ## License
 
 MIT
-

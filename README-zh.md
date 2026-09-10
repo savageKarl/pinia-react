@@ -6,7 +6,7 @@
 - **响应式**: 基于 `useSyncExternalStore` 构建，完美支持 React 18+ 的并发渲染 (Concurrent Rendering)。
 - **高效**: 细粒度的依赖自动追踪。组件只有在真正使用的属性发生变化时才会重新渲染，无需手动编写 selector。
 - **直观**: 在 Actions 中使用可变 (Mutable) 语法直接修改状态 (底层由 Immer 处理)，代码更简洁。
-- **开发工具**: 开箱即用支持 Redux DevTools Extension，支持时间旅行和状态快照。
+- **开发工具**: 可通过独立的 `@pinia-react/devtools` 插件接入 Redux DevTools Extension。
 
 ## 安装
 
@@ -175,6 +175,34 @@ export const { useIdStore, getIdStore } = defineStore('id', {
   // actions 和 getters 的类型会自动推导
 })
 ```
+
+## DevTools
+
+DevTools 能力由可选的 `@pinia-react/devtools` 包提供。它会将显式启用的 Store 接入 Redux DevTools Extension，并不是 Vue Devtools 集成。
+
+```bash
+pnpm add -D @pinia-react/devtools
+```
+
+请在任何 Store 创建前注册插件，然后为需要调试的 Store 显式开启 DevTools：
+
+```ts
+import { createPinia, defineStore } from 'pinia-react'
+import { devtoolsPlugin } from '@pinia-react/devtools'
+
+const pinia = createPinia()
+pinia.use(devtoolsPlugin({ name: 'My App' }))
+
+export const { useCounterStore } = defineStore('counter', {
+  state: () => ({ count: 0 }),
+  devtools: {
+    enabled: true,
+    name: 'Counter'
+  }
+})
+```
+
+插件会记录 action、`$patch()` 和 `$reset()`。你可以在 Redux DevTools 中查看状态，并执行跳转、回滚、重置、提交和导入状态。配置项和限制请参阅 [DevTools 指南](https://savagekarl.github.io/pinia-react/zh/guide/plugins/devtools)。
 
 ## 文档
 要了解更多关于 Pinia-React 的信息，请查阅其[文档](https://savagekarl.github.io/pinia-react)。

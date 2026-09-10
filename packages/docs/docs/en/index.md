@@ -25,7 +25,7 @@ features:
     details: Ensure seamless compatibility with React 18's concurrent features through `useSyncExternalStore`.
     icon: ⚡️
   - title: Developer Friendly
-    details: Built-in Redux DevTools support for seamless debugging, including state inspection and time-travel.
+    details: Optional Redux DevTools integration for inspecting opted-in stores and navigating their state history.
     icon: 🕵️
   - title: TypeScript Friendly
     details: Built-in type inference for complete type safety without additional configuration.

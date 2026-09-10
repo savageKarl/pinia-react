@@ -8,5 +8,10 @@
     "type": "dir",
     "name": "core-concepts",
     "label": "Core Concepts"
+  },
+  {
+    "type": "dir",
+    "name": "plugins",
+    "label": "Plugins"
   }
 ]

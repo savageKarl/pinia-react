@@ -21,11 +21,6 @@
   },
   {
     "type": "file",
-    "name": "plugins",
-    "label": "插件"
-  },
-  {
-    "type": "file",
     "name": "outside-component-usage",
     "label": "组件外使用 Store"
   }

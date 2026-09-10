@@ -8,5 +8,10 @@
     "type": "dir",
     "name": "core-concepts",
     "label": "核心概念"
+  },
+  {
+    "type": "dir",
+    "name": "plugins",
+    "label": "插件"
   }
 ]

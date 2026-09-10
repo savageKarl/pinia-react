@@ -25,7 +25,7 @@ features:
     details: 通过 `useSyncExternalStore` 确保与 React 18 的并发特性无缝兼容。
     icon: ⚡️
   - title: 开发者友好
-    details: 内置 Redux DevTools 支持，实现无缝调试，包括状态检查和时间旅行功能。
+    details: 可选的 Redux DevTools 集成，用于检查显式启用的 Store 并浏览其状态历史。
     icon: 🕵️
   - title: TypeScript 友好
     details: 内置类型推导，无需额外配置即可获得完整的类型安全。
