@@ -6,6 +6,7 @@
   "linked": [],
   "access": "restricted",
   "baseBranch": "main",
+  "changedFilePatterns": ["src/**", "package.json", "tsup.config.ts"],
   "updateInternalDependencies": "patch",
   "ignore": [],
   "snapshot": {
