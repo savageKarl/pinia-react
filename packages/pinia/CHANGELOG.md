@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.1.3
+
+### Patch Changes
+
+- e894f03: Fix CommonJS package exports, expose readonly store ids, make readonly mutations fail consistently, and support state keys containing dots in reactive tracking.
+- c5c7d1c: Support state mutations after `await` in async actions, make `$state` deeply readonly, and invalidate getters that return nested objects or arrays when their contents change.
+- b9c81e4: Isolate Immer configuration, support special objects in state, and warn on store definition misuse.
+
+  - Use an isolated Immer instance so importing the library no longer disables auto-freeze for other Immer consumers.
+  - Preserve `Date`, `Map` and `Set` behaviour by only proxying plain objects and arrays.
+  - Warn when a store id is defined twice and replace the previous store with the new definition.
+  - Warn when a plugin is registered after stores were already created.
+  - Document the async `await` draft limitation and the unique store id rule.
+
 ## 2.1.2
 
 ### Patch Changes
