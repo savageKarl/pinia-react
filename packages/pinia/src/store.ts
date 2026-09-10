@@ -180,26 +180,88 @@ export function defineStore<
     const originalActions = options.actions || ({} as A)
     const wrappedActions = {} as TransformActions<A>
     const proxyTarget = {}
+    const readonlyStateProxyCache = new WeakMap<object, object>()
+
+    const readonlyWarning = () => {
+      console.warn(`[${id}] Store is read-only. Use actions for mutations.`)
+      return false
+    }
+
+    const createReadonlyStateProxy = (stateTarget: any): any => {
+      const cached = readonlyStateProxyCache.get(stateTarget)
+      if (cached) return cached
+
+      const proxy = new Proxy(stateTarget, {
+        get(obj, key) {
+          const value = Reflect.get(obj, key)
+          if (typeof value === 'object' && value !== null) return createReadonlyStateProxy(value)
+          return value
+        },
+        set: readonlyWarning,
+        deleteProperty: readonlyWarning
+      })
+      readonlyStateProxyCache.set(stateTarget, proxy)
+      return proxy
+    }
+
+    const getAtPath = (path: string[]) => {
+      let value: any = localScope.currentState
+      for (const key of path) value = value[key]
+      return value
+    }
+
+    const setAtPath = (draft: Draft<S>, path: string[], value: unknown) => {
+      let target: any = draft
+      for (let i = 0; i < path.length - 1; i++) target = target[path[i]]
+      target[path[path.length - 1]] = value
+    }
+
+    const deleteAtPath = (draft: Draft<S>, path: string[]) => {
+      let target: any = draft
+      for (let i = 0; i < path.length - 1; i++) target = target[path[i]]
+      delete target[path[path.length - 1]]
+    }
+
+    const createActionStateProxy = (path: string[], meta: MutationMeta): any => {
+      return new Proxy(Array.isArray(getAtPath(path)) ? [] : {}, {
+        get(_target, key, receiver) {
+          const current = getAtPath(path)
+          const value = Reflect.get(current, key, receiver)
+          if (typeof key === 'symbol' || value === null || typeof value !== 'object') return value
+          return createActionStateProxy([...path, String(key)], meta)
+        },
+        set(_target, key, value) {
+          internalPatch((draft) => setAtPath(draft, [...path, String(key)], value), meta)
+          return true
+        },
+        deleteProperty(_target, key) {
+          internalPatch((draft) => deleteAtPath(draft, [...path, String(key)]), meta)
+          return true
+        }
+      })
+    }
 
     function createStoreProxy(onAccess?: (path: string[]) => void): Store<Id, S, G, A> {
-      const readonlyWarning = () => {
-        console.warn(`[${id}] Store is read-only. Use actions for mutations.`)
-        return false
-      }
-
-      const createStateProxy = (stateTarget: any, path: string[], onDeepAccess?: (path: string[]) => void): any => {
+      const createStateProxy = (
+        stateTarget: any,
+        path: string[],
+        onDeepAccess?: (path: string[]) => void,
+        trackObjectAccess = false
+      ): any => {
         return new Proxy(stateTarget, {
           get(obj, key) {
             if (typeof key === 'symbol') return Reflect.get(obj, key)
             const currentPath = [...path, String(key)]
             const value = Reflect.get(obj, key)
             if (typeof value === 'object' && value !== null) {
-              return createStateProxy(value, currentPath, onDeepAccess)
+              if (trackObjectAccess) onDeepAccess?.(currentPath)
+              return createStateProxy(value, currentPath, onDeepAccess, trackObjectAccess)
             }
             onDeepAccess?.(currentPath)
             return value
           },
-          set: readonlyWarning
+          set: readonlyWarning,
+          deleteProperty: readonlyWarning
         })
       }
 
@@ -207,7 +269,10 @@ export function defineStore<
         get(_target, key, receiver) {
           const strKey = String(key)
 
-          if (strKey === '$state') return localScope.currentState
+          if (strKey === '$state') {
+            onAccess?.(['$state'])
+            return createReadonlyStateProxy(localScope.currentState)
+          }
           if (strKey === '$patch') return $patch
           if (strKey === '$reset') return $reset
           if (strKey === '$subscribe') return $subscribe
@@ -242,7 +307,7 @@ export function defineStore<
                 dependencies.add(path[0])
               }
               const trackingProxyForThis = createStoreProxy(onGetterAccess)
-              const trackingStateProxy = createStateProxy(state, [], onGetterAccess)
+              const trackingStateProxy = createStateProxy(state, [], onGetterAccess, true)
               const result = (getters as any)[strKey].call(trackingProxyForThis, trackingStateProxy)
 
               localScope.getterDependencies.set(strKey, dependencies)
@@ -281,24 +346,41 @@ export function defineStore<
       const originalAction = (originalActions as any)[actionName]
       ;(wrappedActions as any)[actionName] = (...args: any[]) => {
         let returnValue: any
+        let draftActive = true
+        const meta: MutationMeta = { type: 'action', action: actionName, args }
         const recipe = (draft: Draft<S>) => {
           const actionContextProxy = new Proxy({} as any, {
             get(_, key) {
               const strKey = String(key)
-              if (Reflect.has(draft, strKey)) return (draft as any)[strKey]
+              if (draftActive && Reflect.has(draft, strKey)) return (draft as any)[strKey]
+              if (!draftActive && Reflect.has(localScope.currentState, strKey)) {
+                const value = (localScope.currentState as any)[strKey]
+                if (value !== null && typeof value === 'object') return createActionStateProxy([strKey], meta)
+                return value
+              }
               if (strKey in getters) {
-                return (getters as any)[strKey].call(actionContextProxy, draft)
+                if (draftActive) return (getters as any)[strKey].call(actionContextProxy, draft)
+                return Reflect.get(storePublicApi, key, storePublicApi)
               }
               return Reflect.get(storePublicApi, key, storePublicApi)
             },
             set(_, key, value) {
-              ;(draft as any)[String(key)] = value
+              const path = [String(key)]
+              if (draftActive) (draft as any)[path[0]] = value
+              else internalPatch((currentDraft) => setAtPath(currentDraft, path, value), meta)
+              return true
+            },
+            deleteProperty(_, key) {
+              const path = [String(key)]
+              if (draftActive) delete (draft as any)[path[0]]
+              else internalPatch((currentDraft) => deleteAtPath(currentDraft, path), meta)
               return true
             }
           })
           returnValue = originalAction.apply(actionContextProxy, args)
         }
-        internalPatch(recipe, { type: 'action', action: actionName, args })
+        internalPatch(recipe, meta)
+        draftActive = false
         return returnValue
       }
     })
@@ -360,6 +442,10 @@ export function defineStore<
         const listener = (_state: S, _prevState: S, patches: Patch[]) => {
           let shouldUpdate = false
           for (const path of trackedPaths.current) {
+            if (path === '$state') {
+              shouldUpdate = patches.length > 0
+              if (shouldUpdate) break
+            }
             const topKey = path.split('.')[0]
             if (topKey in getters) {
               if (!currentScope.getterResultCache.has(topKey)) {

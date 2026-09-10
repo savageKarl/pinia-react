@@ -3,6 +3,7 @@ export { getActivePinia, setActivePinia } from './rootStore'
 export { defineStore } from './store'
 
 export type {
+  DeepReadonly,
   DefineStoreOptions,
   DefineStoreOptionsBase,
   MutationEvent,
