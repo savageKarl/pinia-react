@@ -67,6 +67,33 @@ export function App() {
 }
 ```
 
+## 跨 `await` 修改状态
+
+Action 基于一个 Immer draft 运行，而 draft 会在其同步部分结束的那一刻被终止。`await` 会把控制权交还给调用方，因此这个过程发生在第一个 `await` 处：在此之前捕获的嵌套引用，之后都会被撤销。
+
+```tsx
+actions: {
+  async rename() {
+    const profile = this.profile // 指向 draft 的引用
+    await save()
+    profile.name = 'Ada' // 抛错：draft 已被撤销
+  },
+}
+```
+
+`await` 之后请通过 `this` 重新读取状态：
+
+```tsx
+actions: {
+  async rename() {
+    await save()
+    this.profile.name = 'Ada'
+  },
+}
+```
+
+`await` 前后的修改会分别提交，因此每一次都会通知到 `$subscribe`、插件和 DevTools。
+
 ## 访问其他 Store 的 Action
 
 如果需要使用另一个 Store 的 Action 或 State，只需在 Action 内部获取那个 Store 的实例即可。

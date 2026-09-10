@@ -67,6 +67,33 @@ export function App() {
 }
 ```
 
+## Mutating State Across `await`
+
+An action runs against an Immer draft that is finalized as soon as its synchronous part ends. `await` returns control to the caller, so this happens at the first `await`: any nested reference captured before it is revoked afterwards.
+
+```tsx
+actions: {
+  async rename() {
+    const profile = this.profile // reference into the draft
+    await save()
+    profile.name = 'Ada' // throws: the draft has been revoked
+  },
+}
+```
+
+Read state back through `this` after an `await` instead:
+
+```tsx
+actions: {
+  async rename() {
+    await save()
+    this.profile.name = 'Ada'
+  },
+}
+```
+
+Mutations before and after an `await` are committed separately, so each one is reported to `$subscribe`, plugins, and the DevTools.
+
 ## Accessing Actions from Other Stores
 
 To use another store's actions or state, simply get its instance within an action.

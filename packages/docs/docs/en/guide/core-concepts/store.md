@@ -2,6 +2,8 @@
 
 A Store is defined using `defineStore()`. Its first parameter is a unique ID that Pinia uses to identify the store.
 
+Store IDs must be unique within a Pinia instance. Defining the same ID twice warns in development, and the newer definition replaces the previous store.
+
 ```tsx
 import { defineStore } from 'pinia-react'
 

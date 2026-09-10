@@ -1,10 +1,11 @@
-import { type Draft, enablePatches, type Patch, produce, setAutoFreeze } from 'immer'
+import { type Draft, enablePatches, Immer, type Patch } from 'immer'
 import { useCallback, useRef, useSyncExternalStore } from 'react'
 import { getActivePinia } from './rootStore'
 import type {
   DefineStoreOptions,
   MutationEvent,
   MutationMeta,
+  Pinia,
   PiniaPluginContext,
   RestoreStateOptions,
   StateTree,
@@ -16,10 +17,14 @@ import type {
 } from './types'
 
 enablePatches()
-setAutoFreeze(false)
+
+// Isolated Immer instance: keeps `autoFreeze: false` out of the host app's global Immer config.
+const immer = new Immer({ autoFreeze: false })
 
 let activeListenerId: string | null = null
 let activeGetterKey: string | null = null
+
+const storeDefinitionByPinia = new WeakMap<Pinia, Map<string, unknown>>()
 
 function isAffected(patches: Patch[], trackedPaths: Set<string>): boolean {
   if (trackedPaths.size === 0) return false
@@ -42,6 +47,14 @@ function isAffected(patches: Patch[], trackedPaths: Set<string>): boolean {
   return false
 }
 
+// Only plain objects and arrays are safe to wrap in a proxy; Date/Map/Set break their internal slots.
+function isPlainObjectOrArray(value: unknown): value is object {
+  if (Array.isArray(value)) return true
+  if (value === null || typeof value !== 'object') return false
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
 export function defineStore<
   Id extends string,
   S extends StateTree,
@@ -49,6 +62,16 @@ export function defineStore<
   A extends Record<string, any> = {}
 >(id: Id, options: DefineStoreOptions<S, G, A>): StoreDefinitionWithNames<Id, S, G, A> {
   const getters = options.getters || ({} as G)
+
+  function ensureStoreInstance(pinia: Pinia) {
+    if (pinia._s.has(id)) {
+      if (storeDefinitionByPinia.get(pinia)?.get(id) === options) return
+      console.warn(
+        `[pinia-react] Duplicate store id "${id}" detected. The new definition replaces the previous store with the same id.`
+      )
+    }
+    createStoreInstance()
+  }
 
   function resolveGetterDependencies(
     getterName: string,
@@ -93,6 +116,13 @@ export function defineStore<
     }
     pinia._scopes.set(id, localScope)
 
+    let definitionsById = storeDefinitionByPinia.get(pinia)
+    if (!definitionsById) {
+      definitionsById = new Map()
+      storeDefinitionByPinia.set(pinia, definitionsById)
+    }
+    definitionsById.set(id, options)
+
     const isGetterComputing = new Set<string>()
 
     const emit = (nextState: S, oldState: S, patches: Patch[]) => {
@@ -123,7 +153,7 @@ export function defineStore<
       const oldState = localScope.currentState as S
       let patches: Patch[] = []
 
-      const nextState = produce(oldState, updater as any, (p) => {
+      const nextState = immer.produce(oldState, updater as any, (p) => {
         patches = p
       }) as S
 
@@ -194,7 +224,7 @@ export function defineStore<
       const proxy = new Proxy(stateTarget, {
         get(obj, key) {
           const value = Reflect.get(obj, key)
-          if (typeof value === 'object' && value !== null) return createReadonlyStateProxy(value)
+          if (isPlainObjectOrArray(value)) return createReadonlyStateProxy(value)
           return value
         },
         set: readonlyWarning,
@@ -227,7 +257,7 @@ export function defineStore<
         get(_target, key, receiver) {
           const current = getAtPath(path)
           const value = Reflect.get(current, key, receiver)
-          if (typeof key === 'symbol' || value === null || typeof value !== 'object') return value
+          if (typeof key === 'symbol' || !isPlainObjectOrArray(value)) return value
           return createActionStateProxy([...path, String(key)], meta)
         },
         set(_target, key, value) {
@@ -253,7 +283,7 @@ export function defineStore<
             if (typeof key === 'symbol') return Reflect.get(obj, key)
             const currentPath = [...path, String(key)]
             const value = Reflect.get(obj, key)
-            if (typeof value === 'object' && value !== null) {
+            if (isPlainObjectOrArray(value)) {
               if (trackObjectAccess) onDeepAccess?.(currentPath)
               return createStateProxy(value, currentPath, onDeepAccess, trackObjectAccess)
             }
@@ -280,7 +310,7 @@ export function defineStore<
           const state = localScope.currentState
           if (strKey in state) {
             const value = state[strKey]
-            if (typeof value === 'object' && value !== null) {
+            if (isPlainObjectOrArray(value)) {
               return createStateProxy(value, [strKey], onAccess)
             }
             onAccess?.([strKey])
@@ -407,10 +437,7 @@ export function defineStore<
 
   function getStore(): Store<Id, S, G, A> {
     const pinia = getActivePinia()
-
-    if (!pinia._s.has(id)) {
-      createStoreInstance()
-    }
+    ensureStoreInstance(pinia)
 
     if (activeListenerId && activeGetterKey && activeListenerId !== id) {
       const accessedStoreScope = pinia._scopes.get(id)
@@ -429,9 +456,7 @@ export function defineStore<
 
   function useStore(): Store<Id, S, G, A> {
     const pinia = getActivePinia()
-    if (!pinia._s.has(id)) {
-      createStoreInstance()
-    }
+    ensureStoreInstance(pinia)
     const currentScope = pinia._scopes.get(id)!
 
     const trackedPaths = useRef(new Set<string>())

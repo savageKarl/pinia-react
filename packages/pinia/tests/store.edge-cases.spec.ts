@@ -88,4 +88,15 @@ describe('Store Edge Cases', () => {
     expect(result.current.count).toBe(2)
     expect(doubleVal).toBe(4)
   })
+
+  test('warns and replaces the previous store when a store id is defined twice', () => {
+    const { getStore: getFirst } = defineStore('duplicated-id', { state: () => ({ a: 1 }) })
+    const { getStore: getSecond } = defineStore('duplicated-id', { state: () => ({ b: 2 }) })
+
+    getFirst()
+    const second = getSecond()
+
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('duplicated-id'))
+    expect(second.b).toBe(2)
+  })
 })
