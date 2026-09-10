@@ -2,6 +2,8 @@ import type { Draft, Patch } from 'immer'
 
 export type StateTree = Record<string, any>
 
+export type StatePath = string[]
+
 export type MutationType = 'action' | 'patch' | 'reset' | 'restore'
 
 /** Metadata describing why a state transition was committed. */
@@ -52,7 +54,8 @@ export interface PiniaCustomProperties<
   A extends Record<string, any> = Record<string, any>
 > {}
 
-export interface StorePublicApi<S> {
+export interface StorePublicApi<Id extends string = string, S = StateTree> {
+  readonly $id: Id
   $patch: (updater: (draft: Draft<S>) => void) => void
   $reset: () => void
   $subscribe: (callback: SubscriptionCallback<S>) => () => void
@@ -61,14 +64,14 @@ export interface StorePublicApi<S> {
 
 export type GetterContext<S, G> = Readonly<S> & TransformGetters<G>
 
-export type ActionContext<S, G, A> = S & TransformGetters<G> & TransformActions<A> & StorePublicApi<S>
+export type ActionContext<S, G, A> = S & TransformGetters<G> & TransformActions<A> & StorePublicApi<string, S>
 
 export type Store<
   Id extends string,
   S extends StateTree,
   G extends Record<string, any>,
   A extends Record<string, any>
-> = S & TransformGetters<G> & TransformActions<A> & StorePublicApi<S> & PiniaCustomProperties<Id, S, G, A>
+> = S & TransformGetters<G> & TransformActions<A> & StorePublicApi<Id, S> & PiniaCustomProperties<Id, S, G, A>
 
 export type StoreGeneric = Store<string, StateTree, Record<string, any>, Record<string, any>>
 
@@ -90,9 +93,9 @@ export type StoreScope = {
   currentState: StateTree
   listeners: Set<(state: any, prev: any, patches: Patch[]) => void>
   getterResultCache: Map<string, any>
-  getterDependencies: Map<string, Set<string>>
+  getterDependencies: Map<string, Set<StatePath>>
   subscribers: Map<string, Set<string>>
-  createStoreProxy: (onAccess?: (path: string[]) => void) => StoreGeneric
+  createStoreProxy: (onAccess?: (path: StatePath) => void) => StoreGeneric
 }
 
 export interface Pinia {

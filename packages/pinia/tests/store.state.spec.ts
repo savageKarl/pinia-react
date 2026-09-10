@@ -103,4 +103,36 @@ describe('Store State', () => {
     const { result } = renderHook(() => useSetStore())
     expect(result.current.tags.has('x')).toBe(true)
   })
+
+  it('exposes the store id as a readonly property', () => {
+    const { useStore: useNamedStore } = defineStore('named-store', {
+      state: () => ({ count: 0 })
+    })
+    const { result } = renderHook(() => useNamedStore())
+
+    expect(result.current.$id).toBe('named-store')
+    expect(() => {
+      ;(result.current as any).$id = 'other-store'
+    }).toThrow(TypeError)
+    expect(result.current.$id).toBe('named-store')
+  })
+
+  it('tracks state keys that contain dots without splitting the key', () => {
+    const { useStore: useDottedKeyStore } = defineStore('dotted-key', {
+      state: () => ({ 'user.name': 'before', unrelated: false }),
+      actions: {
+        rename(name: string) {
+          this['user.name'] = name
+        }
+      }
+    })
+    const { result } = renderHook(() => {
+      const store = useDottedKeyStore()
+      return { name: store['user.name'], rename: store.rename }
+    })
+
+    expect(result.current.name).toBe('before')
+    act(() => result.current.rename('after'))
+    expect(result.current.name).toBe('after')
+  })
 })

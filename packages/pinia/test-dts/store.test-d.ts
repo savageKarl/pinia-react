@@ -22,6 +22,7 @@ const store = getStore()
 
 expectType<'on' | 'off'>(store.status)
 expectType<number>(store.nested.counter)
+expectType<'main'>(store.$id)
 
 expectType<'ON' | 'OFF'>(store.upperStatus)
 
