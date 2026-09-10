@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { createPinia, defineStore, setActivePinia } from '../src'
 
 describe('Store State', () => {
@@ -39,5 +39,44 @@ describe('Store State', () => {
     expect(() => {
       result.current.$state = { name: 'Ed' } as any
     }).toThrow()
+  })
+
+  it('prevents direct mutations through $state at every depth', () => {
+    const { result } = renderHook(() => useStore())
+
+    expect(() => {
+      ;(result.current.$state as any).name = 'Ed'
+    }).toThrow()
+    expect(() => {
+      ;(result.current.$state as any).nested.n = 1
+    }).toThrow()
+    expect(() => {
+      delete (result.current.$state as any).nested.n
+    }).toThrow()
+
+    expect(result.current.$state).toEqual({ name: 'Eduardo', nested: { n: 0 } })
+  })
+
+  it('prevents mutating arrays exposed through $state', () => {
+    const { useStore: useArrayStore } = defineStore('readonly-array-state', {
+      state: () => ({ items: ['first'] })
+    })
+    const { result } = renderHook(() => useArrayStore())
+
+    expect(() => {
+      ;(result.current.$state.items as any).push('second')
+    }).toThrow()
+    expect(result.current.$state.items).toEqual(['first'])
+  })
+
+  it('tracks state read through $state and re-renders after a controlled mutation', () => {
+    const { result } = renderHook(() => {
+      const store = useStore()
+      return { value: store.$state.nested.n, increment: () => store.$patch((state) => state.nested.n++) }
+    })
+
+    expect(result.current.value).toBe(0)
+    act(() => result.current.increment())
+    expect(result.current.value).toBe(1)
   })
 })

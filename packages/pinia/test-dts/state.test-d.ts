@@ -48,6 +48,11 @@ store.$patch((state) => {
   state.name = 'Patak'
 })
 expectType<number>(store.$state.count)
+
+// @ts-expect-error $state is deeply readonly
+store.$state.count = 1
+// @ts-expect-error nested $state properties are deeply readonly
+store.$state.items.push({ id: 2 })
 store.$reset()
 
 type StoreFromGetStore = ReturnType<typeof getStore>

@@ -37,6 +37,14 @@ export type TransformActions<A> = A
 
 export type SubscriptionCallback<S> = (state: S, prevState: S) => void
 
+export type DeepReadonly<T> = T extends (...args: any[]) => any
+  ? T
+  : T extends readonly (infer U)[]
+    ? ReadonlyArray<DeepReadonly<U>>
+    : T extends object
+      ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+      : T
+
 export interface PiniaCustomProperties<
   Id extends string = string,
   S extends StateTree = StateTree,
@@ -48,7 +56,7 @@ export interface StorePublicApi<S> {
   $patch: (updater: (draft: Draft<S>) => void) => void
   $reset: () => void
   $subscribe: (callback: SubscriptionCallback<S>) => () => void
-  $state: S
+  $state: DeepReadonly<S>
 }
 
 export type GetterContext<S, G> = Readonly<S> & TransformGetters<G>
