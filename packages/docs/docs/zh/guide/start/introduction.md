@@ -49,7 +49,7 @@ export function App() {
 ## 与 Pinia 的区别
 
   - Pinia-React 仅支持 **Option Store（选项式）** 风格，没有 Setup Store 风格。
-  - Pinia-React 内置了对 Redux DevTools 的支持。
+  - Pinia-React 可通过可选的 `@pinia-react/devtools` 插件接入 Redux DevTools。
   - 目前没有测试工具套件。
   - 目前不支持热重载（HMR）。
   - 没有用于映射状态（mapState 等）的 Vue 专用辅助函数。

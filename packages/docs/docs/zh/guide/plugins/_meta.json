@@ -1,0 +1,12 @@
+[
+  {
+    "type": "file",
+    "name": "index",
+    "label": "插件 API"
+  },
+  {
+    "type": "file",
+    "name": "devtools",
+    "label": "开发工具"
+  }
+]

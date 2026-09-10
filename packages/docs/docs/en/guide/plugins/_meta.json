@@ -1,0 +1,12 @@
+[
+  {
+    "type": "file",
+    "name": "index",
+    "label": "Plugin API"
+  },
+  {
+    "type": "file",
+    "name": "devtools",
+    "label": "DevTools"
+  }
+]

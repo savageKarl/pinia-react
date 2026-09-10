@@ -52,7 +52,7 @@ export function App() {
 ## Differences from Pinia
 
   - Pinia-React only supports the **options store style** and does not have the setup store style.
-  - Pinia-React has built-in support for Redux DevTools.
+  - Pinia-React can integrate with Redux DevTools through the optional `@pinia-react/devtools` plugin.
   - There is currently no test utility suite.
   - There is currently no hot reloading support.
   - There are no Vue-specific helper functions for mapping state.
