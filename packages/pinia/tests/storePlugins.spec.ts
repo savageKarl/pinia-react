@@ -36,4 +36,16 @@ describe('Store Plugins', () => {
     expect(resultA.current.shared).toBe(5)
     expect(resultB.current.shared).toBe(5)
   })
+
+  it('warns when a plugin is registered after stores were created', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const pinia = createPinia()
+    setActivePinia(pinia)
+
+    const { getStore } = defineStore('early-store', { state: () => ({ n: 1 }) })
+    getStore()
+    pinia.use(() => ({}))
+
+    expect(warnSpy).toHaveBeenCalled()
+  })
 })

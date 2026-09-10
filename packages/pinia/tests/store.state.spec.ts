@@ -79,4 +79,28 @@ describe('Store State', () => {
     act(() => result.current.increment())
     expect(result.current.value).toBe(1)
   })
+
+  it('keeps Date behaviour when stored in state', () => {
+    const { useStore: useDateStore } = defineStore('date-state', {
+      state: () => ({ when: new Date('2020-01-01T00:00:00.000Z') })
+    })
+    const { result } = renderHook(() => useDateStore())
+    expect(result.current.when.getUTCFullYear()).toBe(2020)
+  })
+
+  it('keeps Map behaviour when stored in state', () => {
+    const { useStore: useMapStore } = defineStore('map-state', {
+      state: () => ({ lookup: new Map<string, number>([['a', 1]]) })
+    })
+    const { result } = renderHook(() => useMapStore())
+    expect(result.current.lookup.get('a')).toBe(1)
+  })
+
+  it('keeps Set behaviour when stored in state', () => {
+    const { useStore: useSetStore } = defineStore('set-state', {
+      state: () => ({ tags: new Set<string>(['x']) })
+    })
+    const { result } = renderHook(() => useSetStore())
+    expect(result.current.tags.has('x')).toBe(true)
+  })
 })

@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
+import { produce } from 'immer'
 import { createPinia, defineStore, setActivePinia } from '../src'
 
 describe('Store Core', () => {
@@ -53,5 +54,13 @@ describe('Store Core', () => {
       getStore().inc()
     })
     expect(spy).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not disable Immer auto-freeze for other consumers', () => {
+    const next = produce({ nested: { value: 1 } }, (draft) => {
+      draft.nested.value = 2
+    })
+    expect(Object.isFrozen(next)).toBe(true)
+    expect(Object.isFrozen(next.nested)).toBe(true)
   })
 })

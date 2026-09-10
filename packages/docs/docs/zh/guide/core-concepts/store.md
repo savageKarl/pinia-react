@@ -2,6 +2,8 @@
 
 Store 使用 `defineStore()` 进行定义。它的第一个参数是一个唯一的 ID，Pinia 使用它来标识这个 Store。
 
+在同一个 Pinia 实例内，Store ID 必须唯一。重复定义同一个 ID 会在开发时告警，并且新的定义会替换掉之前的 Store。
+
 ```tsx
 import { defineStore } from 'pinia-react'
 

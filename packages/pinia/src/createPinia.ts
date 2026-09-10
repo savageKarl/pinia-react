@@ -10,6 +10,12 @@ export function createPinia(): Pinia {
 
   const pinia: Pinia = {
     use(plugin) {
+      if (_s.size > 0) {
+        console.warn(
+          '[pinia-react] A plugin was registered after stores were created. ' +
+            'The new plugin will not be applied to the stores that already exist.'
+        )
+      }
       _p.push(plugin)
       return this
     },
