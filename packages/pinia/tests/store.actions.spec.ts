@@ -156,7 +156,17 @@ describe('Store Actions', () => {
 
     expect(store.count).toBe(2)
     expect(subscriber).toHaveBeenCalledTimes(2)
-    expect(subscriber).toHaveBeenNthCalledWith(1, { count: 1 }, { count: 0 })
-    expect(subscriber).toHaveBeenNthCalledWith(2, { count: 2 }, { count: 1 })
+    expect(subscriber).toHaveBeenNthCalledWith(
+      1,
+      { count: 1 },
+      { count: 0 },
+      expect.objectContaining({ meta: expect.objectContaining({ type: 'action' }) })
+    )
+    expect(subscriber).toHaveBeenNthCalledWith(
+      2,
+      { count: 2 },
+      { count: 1 },
+      expect.objectContaining({ meta: expect.objectContaining({ type: 'action' }) })
+    )
   })
 })

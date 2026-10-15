@@ -1,5 +1,8 @@
 import { type Draft, enablePatches, Immer, type Patch } from 'immer'
 import { useCallback, useRef, useSyncExternalStore } from 'react'
+import { createActionMeta, runWithAction } from './actionContext'
+import { createMutationProxy, isPlainObjectOrArray, unwrapStateValue } from './mutationProxy'
+import { usePiniaContext } from './piniaContext'
 import { getActivePinia } from './rootStore'
 import type {
   DefineStoreOptions,
@@ -24,6 +27,7 @@ const immer = new Immer({ autoFreeze: false })
 
 let activeListenerId: string | null = null
 let activeGetterKey: string | null = null
+let activeGetterPinia: Pinia | undefined
 
 const storeDefinitionByPinia = new WeakMap<Pinia, Map<string, unknown>>()
 
@@ -48,14 +52,6 @@ function isAffected(patches: Patch[], trackedPaths: Set<StatePath>): boolean {
   return false
 }
 
-// Only plain objects and arrays are safe to wrap in a proxy; Date/Map/Set break their internal slots.
-function isPlainObjectOrArray(value: unknown): value is object {
-  if (Array.isArray(value)) return true
-  if (value === null || typeof value !== 'object') return false
-  const proto = Object.getPrototypeOf(value)
-  return proto === Object.prototype || proto === null
-}
-
 export function defineStore<
   Id extends string,
   S extends StateTree,
@@ -71,7 +67,7 @@ export function defineStore<
         `[pinia-react] Duplicate store id "${id}" detected. The new definition replaces the previous store with the same id.`
       )
     }
-    createStoreInstance()
+    createStoreInstance(pinia)
   }
 
   function resolveGetterDependencies(
@@ -102,15 +98,20 @@ export function defineStore<
     return finalDeps
   }
 
-  function createStoreInstance(): Store<Id, S, G, A> {
-    const pinia = getActivePinia()
-    const initialState = options.state()
+  function createStoreInstance(pinia: Pinia): Store<Id, S, G, A> {
+    const defaults = options.state()
+    const initialState = Object.hasOwn(pinia._initialStores, id)
+      ? (JSON.parse(JSON.stringify(pinia._initialStores[id])) as S)
+      : defaults
+    delete pinia._initialStores[id]
+    pinia.state[id] = initialState
 
     let storePublicApi: Store<Id, S, G, A>
 
     const localScope: StoreScope = {
       currentState: initialState,
       listeners: new Set(),
+      mutationListeners: new Set(),
       getterResultCache: new Map(),
       getterDependencies: new Map(),
       subscribers: new Map(),
@@ -155,14 +156,25 @@ export function defineStore<
       const oldState = localScope.currentState as S
       let patches: Patch[] = []
 
-      const nextState = immer.produce(oldState, updater as any, (p) => {
+      let nextState = immer.produce(oldState, updater as any, (p) => {
         patches = p
       }) as S
+
+      // A function patch may assign an action proxy captured outside its recipe.
+      // Normalize only changed values, keeping untouched state and event patches consistent.
+      const replacements: Patch[] = []
+      patches = patches.map((patch) => {
+        if (patch.op === 'remove') return patch
+        const value = unwrapStateValue(patch.value)
+        if (value === patch.value) return patch
+        replacements.push({ op: 'replace', path: patch.path, value })
+        return { ...patch, value }
+      })
+      if (replacements.length > 0) nextState = immer.applyPatches(nextState, replacements)
 
       if (patches.length > 0 || meta.type === 'reset') {
         localScope.currentState = nextState
         pinia.state[id] = nextState
-        emit(nextState, oldState, patches)
         const event: MutationEvent<S> = {
           storeId: id,
           store: storePublicApi as any,
@@ -171,20 +183,25 @@ export function defineStore<
           patches,
           meta
         }
+        emit(nextState, oldState, patches)
+        localScope.mutationListeners.forEach((listener) => listener(event))
         pinia._m.forEach((listener) => listener(event))
       }
     }
 
-    const $patch = (updater: (draft: Draft<S>) => void) => {
+    const patchWithMeta = (updater: ((draft: Draft<S>) => void) | Partial<S>, actionMeta?: MutationMeta) => {
       internalPatch(
         (draft) => {
-          updater(draft)
+          if (typeof updater === 'function') updater(draft)
+          else Object.assign(draft, unwrapStateValue(updater))
         },
-        { type: 'patch' }
+        { ...actionMeta, type: 'patch' }
       )
     }
-
-    const $reset = () => internalPatch(() => options.state(), { type: 'reset' })
+    const $patch = (updater: ((draft: Draft<S>) => void) | Partial<S>) => patchWithMeta(updater)
+    const resetWithMeta = (actionMeta?: MutationMeta) =>
+      internalPatch(() => options.state(), { ...actionMeta, type: 'reset' })
+    const $reset = () => resetWithMeta()
 
     const restoreState = (state: S, options: RestoreStateOptions = {}) => {
       internalPatch(() => state, {
@@ -194,9 +211,10 @@ export function defineStore<
     }
 
     const $subscribe = (callback: SubscriptionCallback<S>) => {
-      const listener = (state: S, prev: S) => callback(state, prev)
-      localScope.listeners.add(listener as any)
-      return () => localScope.listeners.delete(listener as any)
+      const listener = (event: MutationEvent) =>
+        callback(event.state as S, event.prevState as S, event as MutationEvent<S>)
+      localScope.mutationListeners.add(listener)
+      return () => localScope.mutationListeners.delete(listener)
     }
 
     const getterInvalidationListener = (_state: S, _prevState: S, patches: Patch[]) => {
@@ -234,43 +252,6 @@ export function defineStore<
       })
       readonlyStateProxyCache.set(stateTarget, proxy)
       return proxy
-    }
-
-    const getAtPath = (path: StatePath) => {
-      let value: any = localScope.currentState
-      for (const key of path) value = value[key]
-      return value
-    }
-
-    const setAtPath = (draft: Draft<S>, path: StatePath, value: unknown) => {
-      let target: any = draft
-      for (let i = 0; i < path.length - 1; i++) target = target[path[i]]
-      target[path[path.length - 1]] = value
-    }
-
-    const deleteAtPath = (draft: Draft<S>, path: StatePath) => {
-      let target: any = draft
-      for (let i = 0; i < path.length - 1; i++) target = target[path[i]]
-      delete target[path[path.length - 1]]
-    }
-
-    const createActionStateProxy = (path: StatePath, meta: MutationMeta): any => {
-      return new Proxy(Array.isArray(getAtPath(path)) ? [] : {}, {
-        get(_target, key, receiver) {
-          const current = getAtPath(path)
-          const value = Reflect.get(current, key, receiver)
-          if (typeof key === 'symbol' || !isPlainObjectOrArray(value)) return value
-          return createActionStateProxy([...path, String(key)], meta)
-        },
-        set(_target, key, value) {
-          internalPatch((draft) => setAtPath(draft, [...path, String(key)], value), meta)
-          return true
-        },
-        deleteProperty(_target, key) {
-          internalPatch((draft) => deleteAtPath(draft, [...path, String(key)]), meta)
-          return true
-        }
-      })
     }
 
     function createStoreProxy(onAccess?: (path: StatePath) => void): Store<Id, S, G, A> {
@@ -332,8 +313,10 @@ export function defineStore<
             const dependencies = new Set<StatePath>()
             const prevListenerId = activeListenerId
             const prevGetterKey = activeGetterKey
+            const prevGetterPinia = activeGetterPinia
             activeListenerId = id
             activeGetterKey = strKey
+            activeGetterPinia = pinia
 
             try {
               const onGetterAccess = (path: StatePath) => {
@@ -349,6 +332,7 @@ export function defineStore<
             } finally {
               activeListenerId = prevListenerId
               activeGetterKey = prevGetterKey
+              activeGetterPinia = prevGetterPinia
               isGetterComputing.delete(strKey)
             }
           }
@@ -376,50 +360,30 @@ export function defineStore<
 
     storePublicApi = createStoreProxy()
 
-    Object.keys(originalActions).forEach((actionName) => {
-      const originalAction = (originalActions as any)[actionName]
-      ;(wrappedActions as any)[actionName] = (...args: any[]) => {
-        let returnValue: any
-        let draftActive = true
-        const meta: MutationMeta = { type: 'action', action: actionName, args }
-        const recipe = (draft: Draft<S>) => {
-          const actionContextProxy = new Proxy({} as any, {
-            get(_, key) {
-              const strKey = String(key)
-              if (draftActive && Reflect.has(draft, strKey)) return (draft as any)[strKey]
-              if (!draftActive && Reflect.has(localScope.currentState, strKey)) {
-                const value = (localScope.currentState as any)[strKey]
-                if (value !== null && typeof value === 'object') return createActionStateProxy([strKey], meta)
-                return value
-              }
-              if (strKey in getters) {
-                if (draftActive) return (getters as any)[strKey].call(actionContextProxy, draft)
-                return Reflect.get(storePublicApi, key, storePublicApi)
-              }
-              return Reflect.get(storePublicApi, key, storePublicApi)
-            },
-            set(_, key, value) {
-              const path = [String(key)]
-              if (draftActive) (draft as any)[path[0]] = value
-              else internalPatch((currentDraft) => setAtPath(currentDraft, path, value), meta)
-              return true
-            },
-            deleteProperty(_, key) {
-              const path = [String(key)]
-              if (draftActive) delete (draft as any)[path[0]]
-              else internalPatch((currentDraft) => deleteAtPath(currentDraft, path), meta)
-              return true
-            }
-          })
-          returnValue = originalAction.apply(actionContextProxy, args)
+    const invokeAction = (actionName: string, args: unknown[], parent?: MutationMeta): unknown => {
+      const meta = createActionMeta(pinia, actionName, args, parent)
+      const actionProxy = createMutationProxy(
+        () => localScope.currentState as S,
+        (updater) => internalPatch(updater, meta),
+        (key) => {
+          if (key === '$patch')
+            return (updater: ((draft: Draft<S>) => void) | Partial<S>) => patchWithMeta(updater, meta)
+          if (key === '$reset') return () => resetWithMeta(meta)
+          if (typeof key === 'string' && Object.hasOwn(originalActions, key)) {
+            return (...nestedArgs: unknown[]) => invokeAction(key, nestedArgs, meta)
+          }
+          return Reflect.get(storePublicApi, key, storePublicApi)
         }
-        internalPatch(recipe, meta)
-        draftActive = false
-        return returnValue
-      }
+      )
+      return runWithAction(pinia, meta, () => (originalActions as any)[actionName].apply(actionProxy, args))
+    }
+    Object.keys(originalActions).forEach((actionName) => {
+      ;(wrappedActions as any)[actionName] = (...args: unknown[]) => invokeAction(actionName, args)
     })
 
     localScope.createStoreProxy = createStoreProxy as any
+
+    pinia._s.set(id, storePublicApi as any)
 
     pinia._p.forEach((plugin) => {
       const pluginResult = plugin({
@@ -434,13 +398,11 @@ export function defineStore<
       }
     })
 
-    pinia._s.set(id, storePublicApi as any)
-
     return storePublicApi
   }
 
   function getStore(): Store<Id, S, G, A> {
-    const pinia = getActivePinia()
+    const pinia = activeGetterPinia ?? getActivePinia()
     ensureStoreInstance(pinia)
 
     if (activeListenerId && activeGetterKey && activeListenerId !== id) {
@@ -459,7 +421,8 @@ export function defineStore<
   }
 
   function useStore(): Store<Id, S, G, A> {
-    const pinia = getActivePinia()
+    const contextPinia = usePiniaContext()
+    const pinia = contextPinia ?? getActivePinia()
     ensureStoreInstance(pinia)
     const currentScope = pinia._scopes.get(id)!
 

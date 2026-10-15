@@ -53,3 +53,7 @@ export function App() {
   );
 }
 ```
+
+## Provider 实例解析
+
+上面的解构式辅助函数继续作为主要 API。组件中的 useCounterStore() 优先读取 PiniaProvider Context，再回退到 activePinia。getCounterStore() 是普通函数，除 Getter 求值期间外读取当前 active 实例。Next.js 推荐使用一个根 Provider，并仅在 Client Component 调用 Hook，详见 [Next.js 集成指南](../integrations/nextjs)。

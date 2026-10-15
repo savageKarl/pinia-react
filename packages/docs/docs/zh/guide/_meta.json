@@ -13,5 +13,10 @@
     "type": "dir",
     "name": "plugins",
     "label": "插件"
+  },
+  {
+    "type": "dir",
+    "name": "integrations",
+    "label": "集成"
   }
 ]

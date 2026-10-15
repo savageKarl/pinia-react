@@ -53,3 +53,7 @@ export function App() {
   );
 }
 ```
+
+## Provider resolution
+
+The destructured helpers above remain the main API. A component's useCounterStore() resolves its PiniaProvider context first, then activePinia. getCounterStore() is a plain function and uses the active instance outside getter evaluation. For Next.js, use one root Provider and call hooks from Client Components. See the [Next.js guide](../integrations/nextjs).

@@ -1,0 +1,12 @@
+[
+  {
+    "type": "file",
+    "name": "nextjs",
+    "label": "Next.js App Router"
+  },
+  {
+    "type": "file",
+    "name": "migration",
+    "label": "Action migration"
+  }
+]

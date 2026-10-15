@@ -46,4 +46,4 @@ export function performLogout() {
 }
 ```
 
-这种模式确保了无论你是在组件内部还是外部，访问的始终是同一个全局单例的 Store 实例。
+在单根客户端应用中，getAuthStore() 使用当前 active Pinia。根 PiniaProvider 会在浏览器设置该实例，请在 Provider 初始化后调用，例如放在客户端事件处理函数中。暂不支持多个独立 Provider 与无参数 getAuthStore() 同时正确选择实例。Server Component 应获取普通 JSON 并通过 initialStores 传入 Provider，而不是直接访问客户端 Store。

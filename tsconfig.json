@@ -19,7 +19,8 @@
     "baseUrl": ".",
     "paths": {
       "pinia-react": ["packages/pinia/src"],
-      "@pinia-react/devtools": ["packages/devtools/src"]
+      "@pinia-react/devtools": ["packages/devtools/src"],
+      "pinia-react/next": ["packages/pinia/src/next.ts"]
     }
   },
   "include": ["packages"],

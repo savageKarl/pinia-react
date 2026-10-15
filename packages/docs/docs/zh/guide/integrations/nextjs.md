@@ -1,0 +1,55 @@
+# Next.js App Router
+
+在共享布局中使用一个根级 PiniaProvider，确保客户端导航时它保持挂载。Server Component 获取请求数据，并按 Store ID 组织为普通 JSON 传入。useCounterStore 等 Hook 在 Client Component 中调用。
+
+```tsx
+// app/layout.tsx — Server Component
+import { PiniaProvider } from 'pinia-react/next'
+import type { ReactNode } from 'react'
+
+export default async function Layout({ children }: { children: ReactNode }) {
+  // 将示例替换为当前请求对应的 API 或数据库查询。
+  const counter = await Promise.resolve({ count: 10 })
+  return (
+    <html lang='zh'>
+      <body>
+        <PiniaProvider initialStores={{ counter }}>{children}</PiniaProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+```tsx
+// app/counter.tsx — Client Component
+'use client'
+import { defineStore } from 'pinia-react'
+
+export const { useCounterStore, getCounterStore } = defineStore('counter', {
+  state: () => ({ count: 0 }),
+  actions: { increment() { this.count++ } }
+})
+
+export function Counter() {
+  const store = useCounterStore()
+  return <button onClick={() => store.increment()}>{store.count}</button>
+}
+```
+
+## 初始化与生命周期
+
+initialStores 是以 defineStore 的精确 ID 为键的容器。传入的每个 Store 都需要完整的 JSON 状态快照；未提供快照的 Store 使用自己的 state() 默认值。不会深度合并。快照在 Store 首次创建时惰性消费，并在插件运行前完成初始化，此时 pinia.state 已包含初始状态。
+
+Provider 在其生命周期内持有同一个 Pinia 实例。普通属性更新、router.refresh() 和同一布局下的客户端导航都不会重新应用快照或覆盖客户端修改。卸载并重新挂载 Provider 会创建新实例。$reset 恢复 state 工厂默认值，而不是服务端快照。
+
+Hook 优先读取 Provider Context，然后回退到 activePinia。浏览器中的根级 Provider 同时设置 activePinia，因此客户端事件处理函数和非 Hook 代码仍能调用 getCounterStore()。暂不支持多个独立 Provider 与无参数 getCounterStore() 同时正确选择实例，推荐每个应用只有一个根 Provider。
+
+## 服务端与客户端边界
+
+Provider 在服务端渲染时创建隔离的实例，不设置进程级 activePinia。不要在模块顶层创建保存请求或用户数据的共享 Pinia。Server Component 查询数据并渲染 Provider，不直接调用 Store Hook 或 getCounterStore()。只传 JSON，不传 Pinia 实例、Store、Proxy、Action、Getter 或 Immer Draft。
+
+状态推荐使用字符串、有限数字、布尔值、null、普通对象和数组。日期等领域对象应先转换为 JSON。Date、Map、Set、class 实例、函数和浏览器对象的响应式修改与传输语义不作保证。
+
+## 插件与持久化
+
+持久化由独立插件负责。Provider 不访问 localStorage、IndexedDB 或 Cookie，也不决定本地状态与服务端快照的优先级。浏览器存储恢复通常应在 hydration 完成后，通过带 origin 的插件 restoreState API 执行。插件应在 Store 创建前注册，后注册的插件不会影响已有 Store。普通 React 应用也可从主入口使用 PiniaProvider 获得相同的生命周期管理。

@@ -30,7 +30,11 @@ describe('Pinia mutation lifecycle', () => {
     )
     act(() => result.current.$reset())
 
-    expect(events).toEqual([{ type: 'action', action: 'add', args: [2] }, { type: 'patch' }, { type: 'reset' }])
+    expect(events).toEqual([
+      { type: 'action', action: 'add', args: [2], actionId: expect.any(String) },
+      { type: 'patch' },
+      { type: 'reset' }
+    ])
   })
 
   test('plugins can restore a whole state through the core commit path', () => {

@@ -67,32 +67,37 @@ export function App() {
 }
 ```
 
-## Mutating State Across `await`
+## Action commits and asynchronous work
 
-An action runs against an Immer draft that is finalized as soon as its synchronous part ends. `await` returns control to the caller, so this happens at the first `await`: any nested reference captured before it is revoked afterwards.
+Actions use a stable mutation proxy. Reads and writes resolve the latest committed state before and after `await`. Nested references captured before an await remain usable:
 
-```tsx
+```ts
 actions: {
   async rename() {
-    const profile = this.profile // reference into the draft
+    const profile = this.profile
     await save()
-    profile.name = 'Ada' // throws: the draft has been revoked
+    profile.name = 'Ada'
   },
 }
 ```
 
-Read state back through `this` after an `await` instead:
+Each ordinary assignment commits immediately and emits its own MutationEvent when state changes. An action that only reads state emits nothing. Concurrent actions update the latest state, and nested actions retain each other's changes. An action's return value or Promise is preserved; actions never expose an Immer draft.
 
-```tsx
-actions: {
-  async rename() {
-    await save()
-    this.profile.name = 'Ada'
-  },
-}
+Use an explicit batch when several writes must commit together:
+
+```ts
+this.$patch((state) => {
+  state.loading = false
+  state.items.push(item)
+})
+this.$patch({ loading: false, error: null })
 ```
 
-Mutations before and after an `await` are committed separately, so each one is reported to `$subscribe`, plugins, and the DevTools.
+Both patch forms produce one commit. Object patches replace the supplied top-level fields without deep merging. The array methods push, pop, shift, unshift, splice, sort, reverse, fill and copyWithin also commit once per call.
+
+If an action throws or rejects, already committed changes remain. Handle cleanup explicitly with try/catch/finally. A throwing synchronous $patch recipe commits none of its draft changes. Drafts provided to $patch are valid only inside its synchronous callback; do not retain them across await.
+
+Every commit from one action shares meta.actionId. Nested actions receive a new ID and meta.parentActionId. Patches and resets inside an action keep their own mutation type and inherit the action metadata.
 
 ## Accessing Actions from Other Stores
 

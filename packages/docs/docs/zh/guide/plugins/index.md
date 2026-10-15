@@ -28,7 +28,7 @@ pinia.use(CreatedAtPlugin)
 
 Pinia 插件是一个接收 `context` 对象并可选择性返回要添加到 Store 的属性对象的函数。
 
-`context` 对象包含三个属性：
+context 对象提供 Store 定义、所属 Pinia 和受控恢复入口：
 
 - `id`: Store 的唯一 ID（传递给 `defineStore` 的第一个参数）。
 - `store`: 插件正在增强的 Store 实例。
@@ -151,3 +151,20 @@ declare module 'pinia-react' {
 ```
 
 现在，你可以在任何 Store 实例上访问这些属性，并享受完整的类型支持。
+## 初始化与 Mutation 来源
+
+插件在每个 Store 创建时执行，此时 state 工厂默认值或 Provider 的完整 initialStores 快照已经写入 store.$state 和 pinia.state[id]，Store 也已注册到 pinia._s。请在创建 Store 前注册插件；后注册的插件不会作用于已有 Store。
+
+context 还包含 pinia 和插件专用的 restoreState 函数。外部状态替换应通过 restoreState 进入统一提交流程，并保留来源：
+
+```ts
+pinia.use(({ restoreState }) => ({
+  restoreFromSnapshot(snapshot) {
+    restoreState(snapshot, { type: 'restore', origin: 'my-plugin' })
+  }
+}))
+```
+
+store.$subscribe((state, prevState, event) => {}) 与 pinia.onMutation 接收同一个已提交事件。可选元数据包含 type、origin、action、actionId 和 parentActionId。可通过 origin 避免将恢复操作发回来源。仅 Getter 失效不会创建业务 Mutation。
+
+持久化属于独立插件策略。核心不访问存储，也不决定本地数据是否覆盖 initialStores。上面的 localStorage 示例仅演示浏览器 SPA；在 Next.js 中应将存储恢复推迟到 hydration 之后，避免改变服务端首屏快照。

@@ -1,4 +1,5 @@
 export { createPinia } from './createPinia'
+export { PiniaProvider, type PiniaProviderProps } from './piniaContext'
 export { getActivePinia, setActivePinia } from './rootStore'
 export { defineStore } from './store'
 
@@ -12,6 +13,7 @@ export type {
   MutationType,
   Pinia,
   PiniaCustomProperties,
+  PiniaInitialStores,
   PiniaPlugin,
   PiniaPluginContext,
   RestoreStateOptions,

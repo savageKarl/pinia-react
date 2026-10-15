@@ -1,7 +1,8 @@
 'use client'
 
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { defineStore } from 'pinia-react'
-import React, { useEffect, useState } from 'react'
 
 export const { useStore } = defineStore('main', {
   state: () => ({
@@ -42,18 +43,7 @@ export const { useStore } = defineStore('main', {
 
 const DemoComponent = () => {
   const store = useStore()
-  const [isMounted, setIsMounted] = useState(false)
-
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
-
-  React.useEffect(() => {
-    const unsubscribe = store.$subscribe((state, prevState) => {
-      console.log(`[App.$subscribe] State changed. Prev count: ${prevState.count}, New count: ${state.count}`)
-    })
-    return unsubscribe
-  }, [store])
+  const router = useRouter()
 
   return (
     <div style={{ fontFamily: 'sans-serif', padding: '1rem 2rem' }}>
@@ -90,23 +80,10 @@ const DemoComponent = () => {
       </div>
 
       <div className='card'>
-        <h2>Plugin Demo (localStorage Persistence)</h2>
-        {isMounted ? (
-          <>
-            <p>
-              Is State Persisted in localStorage? <strong>{store.$isPersisted.toString()}</strong>
-            </p>
-            <div className='button-group'>
-              <button onClick={() => store.save()}>Manual Save</button>
-              <button onClick={() => store.clearPersistence()}>Clear From Storage</button>
-            </div>
-          </>
-        ) : (
-          <p>Checking persistence status...</p>
-        )}
-        <p style={{ fontSize: '0.9em', color: '#666' }}>
-          (Note: State also saves automatically on any change. Try refreshing the page.)
-        </p>
+        <h2>Navigation</h2>
+        <p>The root Provider keeps your changes while navigating or refreshing server data.</p>
+        <Link href='/details'>Open another page</Link>
+        <button onClick={() => router.refresh()}>Refresh server data</button>
       </div>
 
       <style>{`

@@ -112,7 +112,7 @@ store.$reset()
 
 While actions are the recommended way to change state, the `$patch` method is useful for batching multiple state mutations together.
 
-The `$patch` method accepts a single function as its argument. This function receives a `draft` version of the state, powered by Immer. You can safely "mutate" this `draft` object, and Immer will produce a new immutable state for you.
+The `$patch` method accepts a function or a shallow partial state object. This function receives a `draft` version of the state, powered by Immer. You can safely "mutate" this `draft` object, and Immer will produce a new immutable state for you.
 
 ```tsx
 store.$patch((draft) => {
@@ -121,6 +121,14 @@ store.$patch((draft) => {
   draft.items.push({ name: 'shoes', quantity: 1 });
 })
 ```
+
+Object patches shallowly replace top-level fields in one commit:
+
+```ts
+store.$patch({ count: 2, name: 'Ada' })
+```
+
+A nested object supplied in a patch must contain its complete replacement value. Both patch forms emit no mutation when state is unchanged. Keep function recipes synchronous and never retain their Immer draft.
 
 ## Replacing State
 
@@ -159,3 +167,17 @@ const unsubscribe = cartStore.$subscribe((state, prevState) => {
 // To remove the listener, call the returned function
 unsubscribe()
 ```
+
+## Mutation metadata and serializable state
+
+The optional third subscription argument is the committed event. Existing callbacks with two parameters remain valid:
+
+```ts
+store.$subscribe((state, prevState, event) => {
+  console.log(event?.meta.type, event?.meta.origin, event?.meta.actionId)
+})
+```
+
+Getter-only invalidation from another store updates dependent components without calling state subscriptions. The mutation event belongs to the store whose state actually changed.
+
+Use JSON-compatible strings, finite numbers, booleans, null, plain objects and arrays for state. Reactive mutation and transport of Date, Map, Set, class instances, functions, Promise and browser objects are not guaranteed. Public state is read-only; use actions, $patch or $reset. $reset recreates the state factory defaults, including when the store originally received a server snapshot.

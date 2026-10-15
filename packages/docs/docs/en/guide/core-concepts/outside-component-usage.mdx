@@ -46,4 +46,4 @@ export function performLogout() {
 }
 ```
 
-This pattern ensures that you are always accessing the same, single instance of the store throughout your application, whether you are in a component or not.
+In a single-root client application, getAuthStore() uses the current active Pinia. A root PiniaProvider sets that instance in the browser; call getAuthStore() after the Provider has initialized, for example from a client event handler. Multiple independent Providers with parameterless getAuthStore() are not supported. Server Components should fetch plain JSON and pass initialStores to the Provider instead of accessing client stores.

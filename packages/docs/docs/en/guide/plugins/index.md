@@ -28,7 +28,7 @@ pinia.use(CreatedAtPlugin)
 
 A Pinia plugin is a function that receives a `context` object and can optionally return an object of properties to add to the store.
 
-The `context` object contains three properties:
+The context object exposes the store definition and its Pinia instance:
 
 - `id`: The unique ID of the store (the first argument passed to `defineStore`).
 - `store`: The store instance the plugin is augmenting.
@@ -151,3 +151,20 @@ declare module 'pinia-react' {
 ```
 
 Now you can access these properties on any store instance with full type support.
+## Initialization and mutation origins
+
+Plugins run when each store is created. Factory defaults or a Provider's complete initialStores snapshot are already available in store.$state and pinia.state[id], and the store is registered in pinia._s. Register plugins before creating stores; registering later does not apply them to existing stores.
+
+The context also contains pinia and the plugin-only restoreState function. Use restoreState to replace external state through the same commit lifecycle, preserving its origin:
+
+```ts
+pinia.use(({ restoreState }) => ({
+  restoreFromSnapshot(snapshot) {
+    restoreState(snapshot, { type: 'restore', origin: 'my-plugin' })
+  }
+}))
+```
+
+store.$subscribe((state, prevState, event) => {}) receives the same committed event as pinia.onMutation. Its optional metadata includes type, origin, action, actionId and parentActionId. Use origin to avoid sending a restore back to its source. Getter-only invalidation does not create a business mutation.
+
+Persistence is an independent plugin policy. The core does not access storage or choose whether local data overrides initialStores. The localStorage snippet above is a browser-only SPA illustration; in Next.js defer storage restoration until after hydration, rather than changing the first server-rendered snapshot.

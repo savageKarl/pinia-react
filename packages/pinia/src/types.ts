@@ -11,6 +11,8 @@ export interface MutationMeta {
   type: MutationType
   origin?: string
   action?: string
+  actionId?: string
+  parentActionId?: string
   args?: unknown[]
 }
 
@@ -37,7 +39,7 @@ export type TransformGetters<G> = {
 
 export type TransformActions<A> = A
 
-export type SubscriptionCallback<S> = (state: S, prevState: S) => void
+export type SubscriptionCallback<S extends StateTree> = (state: S, prevState: S, event?: MutationEvent<S>) => void
 
 export type DeepReadonly<T> = T extends (...args: any[]) => any
   ? T
@@ -54,9 +56,10 @@ export interface PiniaCustomProperties<
   A extends Record<string, any> = Record<string, any>
 > {}
 
-export interface StorePublicApi<Id extends string = string, S = StateTree> {
+export interface StorePublicApi<Id extends string = string, S extends StateTree = StateTree> {
   readonly $id: Id
-  $patch: (updater: (draft: Draft<S>) => void) => void
+  $patch(updater: (draft: Draft<S>) => void): void
+  $patch(partial: Partial<S>): void
   $reset: () => void
   $subscribe: (callback: SubscriptionCallback<S>) => () => void
   $state: DeepReadonly<S>
@@ -64,7 +67,10 @@ export interface StorePublicApi<Id extends string = string, S = StateTree> {
 
 export type GetterContext<S, G> = Readonly<S> & TransformGetters<G>
 
-export type ActionContext<S, G, A> = S & TransformGetters<G> & TransformActions<A> & StorePublicApi<string, S>
+export type ActionContext<S extends StateTree, G, A> = S &
+  TransformGetters<G> &
+  TransformActions<A> &
+  StorePublicApi<string, S>
 
 export type Store<
   Id extends string,
@@ -92,11 +98,14 @@ export interface DefineStoreOptions<S extends StateTree, G extends Record<string
 export type StoreScope = {
   currentState: StateTree
   listeners: Set<(state: any, prev: any, patches: Patch[]) => void>
+  mutationListeners: Set<MutationListener>
   getterResultCache: Map<string, any>
   getterDependencies: Map<string, Set<StatePath>>
   subscribers: Map<string, Set<string>>
   createStoreProxy: (onAccess?: (path: StatePath) => void) => StoreGeneric
 }
+
+export type PiniaInitialStores = Record<string, StateTree>
 
 export interface Pinia {
   state: Record<string, StateTree>
@@ -107,6 +116,7 @@ export interface Pinia {
   _s: Map<string, StoreGeneric>
   _scopes: Map<string, StoreScope>
   _m: Set<MutationListener>
+  _initialStores: PiniaInitialStores
 }
 
 export interface PiniaPlugin {
