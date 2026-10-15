@@ -118,4 +118,35 @@ describe('@pinia-react/devtools', () => {
     )
     expect(result.current.count).toBe(4)
   })
+  test('sends each action commit without changing its name and preserves restore origins', () => {
+    const pinia = createPinia().use(devtoolsPlugin())
+    const events: import('pinia-react').MutationEvent[] = []
+    pinia.onMutation((event) => events.push(event))
+    const { getStore } = defineStore('multi', {
+      state: () => ({ count: 0 }),
+      devtools: { enabled: true },
+      actions: {
+        update() {
+          this.count++
+          this.count++
+          this.$patch({ count: 3 })
+        }
+      }
+    })
+    const store = getStore()
+    store.update()
+    expect(connection.send.mock.calls.map(([action]) => action.type)).toEqual(['update', 'update', '@patch'])
+    expect(events[1].meta.actionId).toBe(events[0].meta.actionId)
+    store.$reset()
+    expect(connection.send).toHaveBeenLastCalledWith({ type: '@reset', payload: expect.any(Array) }, { count: 0 })
+    connection.send.mockClear()
+    subscriber?.({ type: 'DISPATCH', payload: { type: 'ROLLBACK' }, state: JSON.stringify({ count: 8 }) })
+    expect(store.count).toBe(8)
+    expect(events.at(-1)?.meta).toEqual({ type: 'restore', origin: '@pinia-react/devtools' })
+    expect(connection.send).not.toHaveBeenCalled()
+    subscriber?.({ type: 'DISPATCH', payload: { type: 'COMMIT' } })
+    expect(connection.init).toHaveBeenLastCalledWith({ count: 8 })
+    subscriber?.({ type: 'DISPATCH', payload: { type: 'JUMP_TO_STATE' }, state: '{invalid' })
+    expect(store.count).toBe(8)
+  })
 })

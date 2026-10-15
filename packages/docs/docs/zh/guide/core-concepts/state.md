@@ -112,7 +112,7 @@ store.$reset()
 
 虽然 Action 是修改 State 的推荐方式，但 `$patch` 方法在需要批量修改多个状态时非常有用。
 
-`$patch` 方法接受一个函数作为参数。该函数接收一个基于 Immer 的 `draft`（草稿）状态对象。你可以安全地“修改”这个 `draft` 对象，Immer 会为你生成新的不可变状态。
+`$patch` 方法接受函数或浅层部分状态对象。该函数接收一个基于 Immer 的 `draft`（草稿）状态对象。你可以安全地“修改”这个 `draft` 对象，Immer 会为你生成新的不可变状态。
 
 ```tsx
 store.$patch((draft) => {
@@ -121,6 +121,14 @@ store.$patch((draft) => {
   draft.items.push({ name: 'shoes', quantity: 1 });
 })
 ```
+
+对象形式在一次提交中浅层替换顶层字段：
+
+```ts
+store.$patch({ count: 2, name: 'Ada' })
+```
+
+传入嵌套对象时，需要给出该字段的完整替换值。两种 patch 在状态没有变化时都不产生 Mutation。函数回调必须同步执行，不要保留其中的 Immer Draft。
 
 ## 替换 State
 
@@ -159,3 +167,17 @@ const unsubscribe = cartStore.$subscribe((state, prevState) => {
 // 调用返回的函数以移除监听器
 unsubscribe()
 ```
+
+## Mutation 元数据与可序列化状态
+
+订阅回调的可选第三个参数为已提交事件。原有的双参数回调仍然有效：
+
+```ts
+store.$subscribe((state, prevState, event) => {
+  console.log(event?.meta.type, event?.meta.origin, event?.meta.actionId)
+})
+```
+
+其他 Store 引起的 Getter 缓存失效会更新依赖组件，不会触发状态订阅；MutationEvent 只属于真实改变状态的 Store。
+
+推荐使用 JSON 兼容的字符串、有限数字、布尔值、null、普通对象和数组。Date、Map、Set、class 实例、函数、Promise 和浏览器对象的响应式修改与传输不作保证。公开状态只读，请使用 Action、$patch 或 $reset 修改。$reset 会重新执行 state 工厂恢复默认状态，即使该 Store 最初使用了服务端快照。

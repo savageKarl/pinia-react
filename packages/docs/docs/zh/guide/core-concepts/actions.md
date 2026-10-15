@@ -67,32 +67,37 @@ export function App() {
 }
 ```
 
-## 跨 `await` 修改状态
+## Action 提交与异步操作
 
-Action 基于一个 Immer draft 运行，而 draft 会在其同步部分结束的那一刻被终止。`await` 会把控制权交还给调用方，因此这个过程发生在第一个 `await` 处：在此之前捕获的嵌套引用，之后都会被撤销。
+Action 始终使用稳定的修改代理，`await` 前后都读取和修改最新的已提交状态。可以保留在 await 前捕获的嵌套引用：
 
-```tsx
+```ts
 actions: {
   async rename() {
-    const profile = this.profile // 指向 draft 的引用
+    const profile = this.profile
     await save()
-    profile.name = 'Ada' // 抛错：draft 已被撤销
+    profile.name = 'Ada'
   },
 }
 ```
 
-`await` 之后请通过 `this` 重新读取状态：
+每次普通赋值都会立即提交，真实状态变化分别产生 MutationEvent。只读取状态的 Action 不产生事件。并发 Action 基于最新状态修改，嵌套 Action 的修改也会保留。普通返回值和 Promise 语义保持不变，不会暴露 Immer Draft。
 
-```tsx
-actions: {
-  async rename() {
-    await save()
-    this.profile.name = 'Ada'
-  },
-}
+需要把多次修改合为一次提交时，显式使用批量边界：
+
+```ts
+this.$patch((state) => {
+  state.loading = false
+  state.items.push(item)
+})
+this.$patch({ loading: false, error: null })
 ```
 
-`await` 前后的修改会分别提交，因此每一次都会通知到 `$subscribe`、插件和 DevTools。
+两种 patch 都只提交一次。对象形式浅层替换传入的顶层字段，不深度合并。数组的 push、pop、shift、unshift、splice、sort、reverse、fill 和 copyWithin 方法每次调用也只提交一次。
+
+Action 抛错或 Promise 拒绝时，已提交的修改会保留。请用 try/catch/finally 显式处理清理。同步 $patch 回调抛错时，该次草稿修改不会提交。$patch 的 Draft 仅在同步回调期间有效，不能保留到 await 之后。
+
+同一 Action 的事件共享 meta.actionId；嵌套 Action 有自己的 ID，并通过 meta.parentActionId 关联父 Action。Action 内的 patch 和 reset 保留自身事件类型，同时继承 Action 元数据。
 
 ## 访问其他 Store 的 Action
 

@@ -13,5 +13,10 @@
     "type": "dir",
     "name": "plugins",
     "label": "Plugins"
+  },
+  {
+    "type": "dir",
+    "name": "integrations",
+    "label": "Integrations"
   }
 ]
