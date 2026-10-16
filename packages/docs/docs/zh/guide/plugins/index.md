@@ -97,21 +97,12 @@ pinia.use(EphemeralCounterPlugin)
 
 ## 在插件中调用 `$subscribe`
 
-你可以在插件中使用 `store.$subscribe` 来监听状态变化，例如实现本地存储持久化。
+使用 `store.$subscribe` 观察真实状态提交。存储持久化请使用 [@pinia-react/persistedstate](./persistedstate)，它统一处理筛选、安全合并、错误和恢复期回写隔离。
 
 ```ts
-pinia.use(({ store, id }) => {
-  // 启动时尝试从 localStorage 获取数据
-  const savedState = localStorage.getItem(id)
-  if (savedState) {
-    store.$patch((draft) => {
-      Object.assign(draft, JSON.parse(savedState))
-    })
-  }
-
-  // 订阅变化并保存回去
-  store.$subscribe((state) => {
-    localStorage.setItem(id, JSON.stringify(state))
+pinia.use(({ store }) => {
+  store.$subscribe((state, previous, event) => {
+    console.log(event?.meta.type, state, previous)
   })
 })
 ```
@@ -167,4 +158,4 @@ pinia.use(({ restoreState }) => ({
 
 store.$subscribe((state, prevState, event) => {}) 与 pinia.onMutation 接收同一个已提交事件。可选元数据包含 type、origin、action、actionId 和 parentActionId。可通过 origin 避免将恢复操作发回来源。仅 Getter 失效不会创建业务 Mutation。
 
-持久化属于独立插件策略。核心不访问存储，也不决定本地数据是否覆盖 initialStores。上面的 localStorage 示例仅演示浏览器 SPA；在 Next.js 中应将存储恢复推迟到 hydration 之后，避免改变服务端首屏快照。
+Provider 通过仅初始化生效的 `plugins` 属性，在 Store 创建前注册插件。持久化仍属于独立插件策略，参阅[状态持久化指南](./persistedstate)。核心不访问存储、不决定本地数据是否覆盖 initialStores。基础服务端安全不等于完整 Next.js hydration 适配。

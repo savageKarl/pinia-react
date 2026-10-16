@@ -8,5 +8,10 @@
     "type": "file",
     "name": "devtools",
     "label": "DevTools"
+  },
+  {
+    "type": "dir",
+    "name": "persistedstate",
+    "label": "Persisted state"
   }
 ]

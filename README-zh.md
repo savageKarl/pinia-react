@@ -204,6 +204,17 @@ export const { useCounterStore } = defineStore('counter', {
 
 插件会记录 action、`$patch()` 和 `$reset()`。你可以在 Redux DevTools 中查看状态，并执行跳转、回滚、重置、提交和导入状态。配置项和限制请参阅 [DevTools 指南](https://savagekarl.github.io/pinia-react/zh/guide/plugins/devtools)。
 
+## 状态持久化
+
+安装 `@pinia-react/persistedstate`，在 Store 创建前注册默认插件，并通过 `persist: true` 开启。`createPersistedState` 支持全局默认值、`auto`、自定义 key、同步存储、嵌套 `pick` / `omit`、钩子和有序多策略。浏览器 React SPA 的 `PiniaProvider` 支持仅初始化生效的 `plugins={[persistedState]}`。
+
+```ts
+import persistedState from '@pinia-react/persistedstate'
+createPinia().use(persistedState)
+```
+
+手动 `$hydrate?.()` / `$persist?.()` 只存在于启用的 Store。服务端 App Router 偏好可使用独立的 `@pinia-react/persistedstate/next` Cookie 适配器与白名单请求快照；默认 localStorage 插件仍面向 SPA，接入、API 与安全限制参阅[持久化指南](https://savagekarl.github.io/pinia-react/zh/guide/plugins/persistedstate)。
+
 ## 文档
 要了解更多关于 Pinia-React 的信息，请查阅其[文档](https://savagekarl.github.io/pinia-react)。
 

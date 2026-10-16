@@ -161,3 +161,41 @@ function ReplaceActive() {
   createPinia()
   return null
 }
+
+it('registers initialization plugins before stores, once per instance, and ignores changed plugin props', () => {
+  const events: string[] = []
+  const plugin = vi.fn(({ store, pinia, id }) => {
+    events.push(id)
+    expect(pinia.state[id]).toEqual(store.$state)
+    expect(store.count).toBe(4)
+  })
+  const changed = vi.fn()
+  const { useStore } = defineStore('plugin-lazy', { state: () => ({ count: 0 }) })
+  function Lazy() {
+    return <span>{useStore().count}</span>
+  }
+  const view = render(
+    <PiniaProvider plugins={[plugin]} initialStores={{ 'plugin-lazy': { count: 4 } }}>
+      <span>pending</span>
+    </PiniaProvider>
+  )
+  const instance = getActivePinia()
+  expect(instance._s.size).toBe(0)
+  expect(instance._p).toEqual([plugin])
+  view.rerender(
+    <PiniaProvider plugins={[changed]}>
+      <Lazy />
+    </PiniaProvider>
+  )
+  expect(events).toEqual(['plugin-lazy'])
+  expect(plugin).toHaveBeenCalledOnce()
+  expect(changed).not.toHaveBeenCalled()
+  view.rerender(
+    <PiniaProvider plugins={[plugin]}>
+      <Lazy />
+    </PiniaProvider>
+  )
+  expect(getActivePinia()).toBe(instance)
+  expect(plugin).toHaveBeenCalledOnce()
+  expect(instance._p).toEqual([plugin])
+})

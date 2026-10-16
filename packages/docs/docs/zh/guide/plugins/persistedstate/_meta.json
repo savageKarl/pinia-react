@@ -1,0 +1,27 @@
+[
+  {
+    "type": "file",
+    "name": "configuration",
+    "label": "配置"
+  },
+  {
+    "type": "file",
+    "name": "advanced",
+    "label": "进阶用法"
+  },
+  {
+    "type": "file",
+    "name": "typescript",
+    "label": "TypeScript"
+  },
+  {
+    "type": "file",
+    "name": "limitations",
+    "label": "限制与注意事项"
+  },
+  {
+    "type": "file",
+    "name": "nextjs",
+    "label": "Next.js（Cookie）"
+  }
+]

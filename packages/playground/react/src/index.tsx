@@ -1,18 +1,17 @@
+import { devtoolsPlugin } from '@pinia-react/devtools'
+import persistedState from '@pinia-react/persistedstate'
+import { PiniaProvider } from 'pinia-react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import '../../shared/playground.css'
 import { App } from './App'
-import './style.css'
-import { createPinia } from 'pinia-react'
-import { localStoragePlugin } from './localStoragePlugin'
 
-const pinia = createPinia()
+const plugins = [persistedState, devtoolsPlugin({ name: 'React playground' })]
 
-pinia.use(({ store, id }) => {
-  ;(store as any).secretKey = `SECRET_${id.toUpperCase()}`
-  store.$subscribe(() => {
-    console.log(`[PersistencePlugin] Saving state for ${id}`)
-  })
-})
-
-pinia.use(localStoragePlugin)
-
-createRoot(document.querySelector('#app')!).render(<App />)
+createRoot(document.querySelector('#app')!).render(
+  <StrictMode>
+    <PiniaProvider plugins={plugins}>
+      <App />
+    </PiniaProvider>
+  </StrictMode>
+)

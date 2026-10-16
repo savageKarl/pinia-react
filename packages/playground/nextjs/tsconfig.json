@@ -10,7 +10,7 @@
     "incremental": true,
     "module": "esnext",
     "esModuleInterop": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
@@ -18,8 +18,15 @@
       {
         "name": "next"
       }
-    ]
+    ],
+    "paths": {
+      "pinia-react": ["../../pinia/src"],
+      "pinia-react/next": ["../../pinia/src/next.ts"],
+      "@pinia-react/devtools": ["../../devtools/src"],
+      "@pinia-react/persistedstate": ["../../persistedstate/src"],
+      "@pinia-react/persistedstate/next": ["../../persistedstate/src/next.ts"]
+    }
   },
-  "include": ["next-env.d.ts", ".next/types/**/*.ts", "**/*.ts", "**/*.tsx"],
+  "include": ["next-env.d.ts", ".next/types/**/*.ts", "**/*.ts", "**/*.tsx", "../shared/**/*.d.ts"],
   "exclude": ["node_modules"]
 }

@@ -48,3 +48,14 @@ expectType<React.ReactNode>(PiniaProvider(props))
 // @ts-expect-error children is required
 const missingChildren: PiniaProviderProps = { initialStores }
 void missingChildren
+
+const plugins: readonly import('pinia-react').PiniaPlugin[] = [
+  (context) => {
+    expectType<import('pinia-react').PiniaPluginContext>(context)
+  }
+]
+const pluginProps: PiniaProviderProps = { plugins, children: null }
+expectType<import('pinia-react').PiniaProviderProps>(pluginProps)
+// @ts-expect-error plugins must contain PiniaPlugin functions.
+const invalidPlugins: PiniaProviderProps = { plugins: [1], children: null }
+void invalidPlugins

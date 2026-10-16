@@ -8,5 +8,10 @@
     "type": "file",
     "name": "devtools",
     "label": "开发工具"
+  },
+  {
+    "type": "dir",
+    "name": "persistedstate",
+    "label": "状态持久化"
   }
 ]

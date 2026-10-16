@@ -199,6 +199,17 @@ export const { useCounterStore } = defineStore('counter', {
 
 The plugin reports actions, `$patch()` calls, and `$reset()` calls. Redux DevTools can inspect state and perform jump, rollback, reset, commit, and state import operations. See the [DevTools guide](https://savagekarl.github.io/pinia-react/guide/plugins/devtools) for configuration and limitations.
 
+## Persisted State
+
+Install `@pinia-react/persistedstate` and register its default plugin before stores are created. Enable a store with `persist: true`, or configure global defaults, `auto`, custom keys, synchronous storage, nested `pick` / `omit`, hooks and ordered strategies through `createPersistedState`. In a browser React SPA, `PiniaProvider` accepts initialization-only `plugins={[persistedState]}`.
+
+```ts
+import persistedState from '@pinia-react/persistedstate'
+createPinia().use(persistedState)
+```
+
+Manual `$hydrate?.()` / `$persist?.()` methods are present only on enabled stores. For server-rendered App Router preferences, use the separate `@pinia-react/persistedstate/next` Cookie adapter with an allowlisted request snapshot; the default localStorage plugin remains SPA-only. See the [persisted state guide](https://savagekarl.github.io/pinia-react/guide/plugins/persistedstate) for setup, API and security limits.
+
 ## Documentation
 
 To learn more about Pinia-React, check [its documentation](https://savagekarl.github.io/pinia-react).

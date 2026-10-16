@@ -9,6 +9,7 @@ This repository is a pnpm workspace containing the following main projects:
 | Path | Purpose |
 | --- | --- |
 | `packages/pinia` | The `pinia-react` core package. |
+| `packages/persistedstate` | The `@pinia-react/persistedstate` synchronous persistence plugin. |
 | `packages/devtools` | The `@pinia-react/devtools` Redux DevTools plugin. |
 | `packages/docs` | The Rspress documentation site. |
 | `packages/playground/react` | React playground for manual testing. |
@@ -141,6 +142,7 @@ Select every publishable package affected by the pull request:
 
 - `pinia-react`
 - `@pinia-react/devtools`
+- `@pinia-react/persistedstate`
 
 Choose the version impact independently for each selected package:
 

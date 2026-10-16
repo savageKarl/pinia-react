@@ -16,11 +16,12 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": false,
     "skipLibCheck": true,
-    "baseUrl": ".",
     "paths": {
-      "pinia-react": ["packages/pinia/src"],
-      "@pinia-react/devtools": ["packages/devtools/src"],
-      "pinia-react/next": ["packages/pinia/src/next.ts"]
+      "pinia-react": ["./packages/pinia/src"],
+      "@pinia-react/devtools": ["./packages/devtools/src"],
+      "pinia-react/next": ["./packages/pinia/src/next.ts"],
+      "@pinia-react/persistedstate": ["./packages/persistedstate/src"],
+      "@pinia-react/persistedstate/next": ["./packages/persistedstate/src/next.ts"]
     }
   },
   "include": ["packages"],

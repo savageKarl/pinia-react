@@ -5,12 +5,16 @@
   "main": "index.js",
   "private": true,
   "scripts": {
-    "dev": "next dev"
+    "dev": "next dev",
+    "test": "vitest run --config ./vitest.config.mts",
+    "test-dts": "tsc -p ./tsconfig.check.json"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "next": "^15.4.6"
+    "next": "^15.4.6",
+    "pinia-react": "workspace:*",
+    "@pinia-react/persistedstate": "workspace:*"
   }
 }
