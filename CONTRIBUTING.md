@@ -62,6 +62,14 @@ pnpm --filter @pinia-react/devtools test -- --run
 pnpm --filter @pinia-react/devtools test-dts
 ```
 
+## Formatting and Line Endings
+
+Use UTF-8, two-space indentation, and LF line endings for all text files, including Windows batch files (`.bat` and `.cmd`).
+
+`biome.json` defines formatter output, `.editorconfig` guides compatible editors, and `.gitattributes` defines Git's text normalization and checkout line endings. JavaScript and TypeScript inherit the shared indentation style.
+
+Do not mix repository-wide line-ending normalization with unrelated functional changes.
+
 ## Branch Workflow
 
 The repository uses `main` as its primary branch. Contributors should work in a separate branch created from the latest `main`:
