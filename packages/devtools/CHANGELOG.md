@@ -1,5 +1,14 @@
 # @pinia-react/devtools
 
+## 1.0.0
+
+### Patch Changes
+
+- Updated dependencies [938ce4e]
+- Updated dependencies [938ce4e]
+- Updated dependencies [68ffae6]
+  - pinia-react@3.0.0
+
 ## 0.1.1
 
 ### Patch Changes

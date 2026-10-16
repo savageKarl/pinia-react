@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.0.0
+
+### Major Changes
+
+- 68ffae6: Add a root PiniaProvider and the pinia-react/next client entry with lazy, complete per-store initialStores snapshots. Hooks prefer the Provider context, snapshots initialize before plugins, and server rendering does not activate a process-wide request store.
+
+  Actions now use a stable mutation proxy before and after await. Each real assignment commits independently against current state; nested and concurrent actions preserve one another's updates, and failed actions retain already committed writes. Array mutating methods commit once per call. Use $patch(fn) or the new shallow $patch(object) form to group writes into one commit.
+
+  Expose optional actionId and parentActionId mutation metadata and forward MutationEvent as the optional third $subscribe callback argument. Getter-only invalidation no longer invokes state subscriptions. JSON objects, arrays and primitive values are the supported reactive and serializable state model; Date, Map, Set and class mutation semantics are not guaranteed.
+
+### Minor Changes
+
+- 938ce4e: Add the standalone persisted-state plugin with synchronous storage, global defaults, automatic opt-in, ordered strategies, safe nested filtering and merging, hydration hooks, isolated errors, and manual hydration/persistence APIs. Restore through controlled mutations without writing back during hydration. Support browser SPA, non-hook access, and DevTools integration while explicitly leaving full Next.js hydration adaptation for a separate design.
+
+  Allow PiniaProvider to register initialization-only plugins before stores are created, without changing initial snapshots or rerender behavior.
+
+  Preserve complete Store inference in store-level persistence hooks and error handlers, including Getter results and Action signatures. Export typed PersistenceContext and improve nested path suggestions without rejecting dynamic paths. Document the plugin in matching getting-started, configuration, advanced, TypeScript and limitations guides.
+
+### Patch Changes
+
+- 938ce4e: Add an explicit `@pinia-react/persistedstate/next` Cookie persistence entry for App Router preferences. Read allowlisted request cookies into a serializable snapshot and restore the same snapshot on the server and first client render, including lazy stores. Save later browser commits with configurable Cookie attributes, encoding and bounded writes; never write response cookies while rendering. Preserve filtering, ordered strategies, typed hooks and isolated errors, and document the supported integration in English and Chinese.
+
+  Keep initial hydration snapshots and their Getter results separate from current live state so delayed Suspense consumers can hydrate correctly after another consumer commits a change, without rolling business state backwards.
+
 ## 2.1.3
 
 ### Patch Changes
