@@ -52,4 +52,6 @@ Provider 在服务端渲染时创建隔离的实例，不设置进程级 activeP
 
 ## 插件与持久化
 
-持久化由独立插件负责。Provider 不访问 localStorage、IndexedDB 或 Cookie，也不决定本地状态与服务端快照的优先级。浏览器存储恢复通常应在 hydration 完成后，通过带 origin 的插件 restoreState API 执行。插件应在 Store 创建前注册，后注册的插件不会影响已有 Store。普通 React 应用也可从主入口使用 PiniaProvider 获得相同的生命周期管理。
+通过仅初始化生效的 `plugins?: readonly PiniaPlugin[]` 在创建 Store 前注册插件。需要直接体现在服务端 HTML 中的小型偏好时，使用显式的 [Next.js Cookie 持久化适配器](../plugins/persistedstate/nextjs)：在服务端 Layout 等待请求 Cookie，只传白名单偏好值，再由 Client Provider 创建 Cookie 插件。两端恢复同一份请求快照，浏览器提交保存 Cookie，服务端渲染不写响应 Cookie。
+
+默认 localStorage 插件仍面向浏览器 SPA，不支持直接注册到 SSR 树。核心 Provider 不读取存储、不决定业务数据优先级；Cookie 适配器在 initialStores 之后合并选中字段。导航和 router.refresh() 保留已有 Provider，不重放请求数据。

@@ -15,6 +15,7 @@ import type {
   StateTree,
   Store,
   StoreDefinitionWithNames,
+  StoreGeneric,
   StoreScope,
   SubscriptionCallback,
   TransformActions
@@ -28,6 +29,16 @@ const immer = new Immer({ autoFreeze: false })
 let activeListenerId: string | null = null
 let activeGetterKey: string | null = null
 let activeGetterPinia: Pinia | undefined
+let activeGetterServerView = false
+
+// Immutable post-plugin snapshots are kept apart from live state and getter caches.
+const serverViews = new WeakMap<
+  StoreScope,
+  {
+    state: StateTree
+    createProxy: (onAccess?: (path: StatePath) => void) => StoreGeneric
+  }
+>()
 
 const storeDefinitionByPinia = new WeakMap<Pinia, Map<string, unknown>>()
 
@@ -127,6 +138,7 @@ export function defineStore<
     definitionsById.set(id, options)
 
     const isGetterComputing = new Set<string>()
+    const serverGetterCache = new Map<string, unknown>()
 
     const emit = (nextState: S, oldState: S, patches: Patch[]) => {
       localScope.listeners.forEach((fn) => fn(nextState, oldState, patches))
@@ -254,7 +266,7 @@ export function defineStore<
       return proxy
     }
 
-    function createStoreProxy(onAccess?: (path: StatePath) => void): Store<Id, S, G, A> {
+    function createStoreProxy(onAccess?: (path: StatePath) => void, serverView = false): Store<Id, S, G, A> {
       const createStateProxy = (
         stateTarget: any,
         path: StatePath,
@@ -284,14 +296,14 @@ export function defineStore<
 
           if (strKey === '$state') {
             onAccess?.(['$state'])
-            return createReadonlyStateProxy(localScope.currentState)
+            return createReadonlyStateProxy(serverView ? serverViews.get(localScope)!.state : localScope.currentState)
           }
           if (strKey === '$id') return id
           if (strKey === '$patch') return $patch
           if (strKey === '$reset') return $reset
           if (strKey === '$subscribe') return $subscribe
 
-          const state = localScope.currentState
+          const state = serverView ? serverViews.get(localScope)!.state : localScope.currentState
           if (strKey in state) {
             const value = state[strKey]
             if (isPlainObjectOrArray(value)) {
@@ -303,7 +315,8 @@ export function defineStore<
 
           if (strKey in getters) {
             onAccess?.([strKey])
-            if (localScope.getterResultCache.has(strKey)) return localScope.getterResultCache.get(strKey)
+            const resultCache = serverView ? serverGetterCache : localScope.getterResultCache
+            if (resultCache.has(strKey)) return resultCache.get(strKey)
             if (isGetterComputing.has(strKey)) {
               console.warn(`[pinia-react] Circular dependency detected in getter "${strKey}"`)
               return undefined
@@ -314,25 +327,28 @@ export function defineStore<
             const prevListenerId = activeListenerId
             const prevGetterKey = activeGetterKey
             const prevGetterPinia = activeGetterPinia
+            const prevServerView = activeGetterServerView
             activeListenerId = id
             activeGetterKey = strKey
             activeGetterPinia = pinia
+            activeGetterServerView = serverView
 
             try {
               const onGetterAccess = (path: StatePath) => {
                 dependencies.add(path)
               }
-              const trackingProxyForThis = createStoreProxy(onGetterAccess)
+              const trackingProxyForThis = createStoreProxy(onGetterAccess, serverView)
               const trackingStateProxy = createStateProxy(state, [], onGetterAccess, true)
               const result = (getters as any)[strKey].call(trackingProxyForThis, trackingStateProxy)
 
-              localScope.getterDependencies.set(strKey, dependencies)
-              localScope.getterResultCache.set(strKey, result)
+              if (!serverView) localScope.getterDependencies.set(strKey, dependencies)
+              resultCache.set(strKey, result)
               return result
             } finally {
               activeListenerId = prevListenerId
               activeGetterKey = prevGetterKey
               activeGetterPinia = prevGetterPinia
+              activeGetterServerView = prevServerView
               isGetterComputing.delete(strKey)
             }
           }
@@ -398,6 +414,10 @@ export function defineStore<
       }
     })
 
+    serverViews.set(localScope, {
+      state: localScope.currentState,
+      createProxy: (onAccess) => createStoreProxy(onAccess, true)
+    })
     return storePublicApi
   }
 
@@ -417,6 +437,11 @@ export function defineStore<
       }
     }
 
+    if (activeGetterServerView) {
+      const view = serverViews.get(pinia._scopes.get(id)!)
+      // A plugin can reenter its own Store before the post-plugin snapshot is captured.
+      if (view) return view.createProxy() as Store<Id, S, G, A>
+    }
     return pinia._s.get(id) as Store<Id, S, G, A>
   }
 
@@ -463,11 +488,16 @@ export function defineStore<
 
     const getSnapshot = useCallback(() => currentScope.currentState, [currentScope])
 
-    useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+    const serverView = serverViews.get(currentScope)!
+    const getServerSnapshot = useCallback(() => serverView, [serverView])
+    const snapshot = useSyncExternalStore<StateTree | typeof serverView>(subscribe, getSnapshot, getServerSnapshot)
 
-    const trackingProxy = currentScope.createStoreProxy((path) => {
+    const onAccess = (path: StatePath) => {
       trackedPaths.current.add(path)
-    })
+    }
+    // The render must read the snapshot returned by React, including delayed hydration.
+    const trackingProxy =
+      snapshot === serverView ? serverView.createProxy(onAccess) : currentScope.createStoreProxy(onAccess)
 
     return trackingProxy as Store<Id, S, G, A>
   }

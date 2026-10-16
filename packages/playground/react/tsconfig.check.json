@@ -1,0 +1,11 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "emitDeclarationOnly": false,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": ["src", "tests", "../shared"],
+  "exclude": ["node_modules", "dist"]
+}

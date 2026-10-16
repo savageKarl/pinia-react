@@ -49,3 +49,21 @@ it('resolves cross-store getters in the request Provider instead of the global a
   expect(active.state).toEqual({})
   expect(getActivePinia()).toBe(active)
 })
+
+it('registers server Provider plugins before store creation without changing activePinia', () => {
+  const active = createPinia()
+  const plugin = vi.fn(({ store, pinia }) => {
+    expect(store.user).toBe('request')
+    expect(pinia).not.toBe(active)
+  })
+  expect(
+    renderToString(
+      <PiniaProvider plugins={[plugin]} initialStores={{ request: { user: 'request' } }}>
+        <User />
+      </PiniaProvider>
+    )
+  ).toContain('request')
+  expect(plugin).toHaveBeenCalledOnce()
+  expect(getActivePinia()).toBe(active)
+  expect(active.state).toEqual({})
+})

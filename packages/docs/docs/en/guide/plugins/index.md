@@ -97,21 +97,12 @@ pinia.use(EphemeralCounterPlugin)
 
 ## Calling `$subscribe` in Plugins
 
-You can use `store.$subscribe` within a plugin to react to state changes, for example, to implement local storage persistence.
+Use `store.$subscribe` to observe committed state changes. For storage persistence, use [@pinia-react/persistedstate](./persistedstate), which handles filtering, safe merging, errors and hydration write isolation.
 
 ```ts
-pinia.use(({ store, id }) => {
-  // You might want to get existing data from localStorage on startup
-  const savedState = localStorage.getItem(id)
-  if (savedState) {
-    store.$patch((draft) => {
-      Object.assign(draft, JSON.parse(savedState))
-    })
-  }
-
-  // Subscribe to changes to save them back
-  store.$subscribe((state) => {
-    localStorage.setItem(id, JSON.stringify(state))
+pinia.use(({ store }) => {
+  store.$subscribe((state, previous, event) => {
+    console.log(event?.meta.type, state, previous)
   })
 })
 ```
@@ -167,4 +158,4 @@ pinia.use(({ restoreState }) => ({
 
 store.$subscribe((state, prevState, event) => {}) receives the same committed event as pinia.onMutation. Its optional metadata includes type, origin, action, actionId and parentActionId. Use origin to avoid sending a restore back to its source. Getter-only invalidation does not create a business mutation.
 
-Persistence is an independent plugin policy. The core does not access storage or choose whether local data overrides initialStores. The localStorage snippet above is a browser-only SPA illustration; in Next.js defer storage restoration until after hydration, rather than changing the first server-rendered snapshot.
+For a Provider, pass plugins through its initialization-only `plugins` prop, before stores are created. Persistence remains an independent plugin policy; see the [persisted state guide](./persistedstate). The core does not access storage or choose whether local data overrides initialStores. Basic server safety is not a complete Next.js hydration adapter.

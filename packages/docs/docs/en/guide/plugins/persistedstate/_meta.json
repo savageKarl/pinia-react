@@ -1,0 +1,27 @@
+[
+  {
+    "type": "file",
+    "name": "configuration",
+    "label": "Configuration"
+  },
+  {
+    "type": "file",
+    "name": "advanced",
+    "label": "Advanced usage"
+  },
+  {
+    "type": "file",
+    "name": "typescript",
+    "label": "TypeScript"
+  },
+  {
+    "type": "file",
+    "name": "limitations",
+    "label": "Limitations"
+  },
+  {
+    "type": "file",
+    "name": "nextjs",
+    "label": "Next.js (Cookies)"
+  }
+]

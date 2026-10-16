@@ -52,4 +52,6 @@ State should use strings, finite numbers, booleans, null, plain objects and arra
 
 ## Plugins and persistence
 
-Persistence remains a separate plugin concern. The Provider does not access localStorage, IndexedDB or cookies and does not select a priority between local state and server snapshots. Browser storage restoration should happen after hydration and use the plugin restoreState API with an origin. Register plugins before their stores are created; adding a plugin later does not modify existing stores. Use the main-entry PiniaProvider for the same lifecycle in ordinary React applications.
+Register initialization-only plugins through `plugins?: readonly PiniaPlugin[]`, before Stores are created. For small preferences already reflected in server HTML, use the explicit [Next.js Cookie persistence adapter](../plugins/persistedstate/nextjs): await request cookies in the Server Layout, transfer only allowlisted preference values, and create the Cookie plugin in a Client Provider. Both sides restore the same captured request snapshot; browser commits save Cookies, while server rendering never writes response cookies.
+
+The default localStorage plugin remains a browser-SPA integration; registering it on an SSR tree is not supported. Core Provider code does not read storage or choose business-data priorities. The Cookie adapter merges its selected fields after initialStores. Navigation and router.refresh() retain an existing Provider rather than replaying request data.
