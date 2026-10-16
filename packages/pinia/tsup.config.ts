@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'tsup'
 
 export default defineConfig({
@@ -7,7 +8,13 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
-  dts: true,
+  dts: {
+    compilerOptions: {
+      paths: {
+        'pinia-react': [fileURLToPath(new URL('./src/index.ts', import.meta.url))]
+      }
+    }
+  },
   external: ['immer', 'react', 'react-dom', 'pinia-react'],
   banner: { js: '"use client";' }
 })
