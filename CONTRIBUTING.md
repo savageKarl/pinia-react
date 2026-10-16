@@ -219,6 +219,7 @@ After normal pull requests containing Changesets are merged into `main`:
 3. The release pull request updates package versions and changelogs.
 4. A project maintainer reviews and merges the release pull request.
 5. The release workflow builds, tests, and publishes the packages to npm.
+6. Only when Changesets reports a successful package publication, the release workflow deploys the documentation from the same commit to GitHub Pages.
 
 The generated `changeset-release/*` pull request is managed and merged only by project maintainers.
 
@@ -232,6 +233,10 @@ packages/docs/docs/zh
 ```
 
 When changing user-facing documentation for a feature, update both language versions when equivalent pages exist. Documentation-only changes do not require a package Changeset.
+
+Merging documentation into `main` or pushing to `docs` does not deploy the public site. Automatic deployment happens only after a successful Changesets package publication, using the same commit as that release.
+
+For documentation-only corrections or deployment retries, maintainers can manually run **Deploy Rspress site to Pages**. Set `ref` to a published release tag or commit whose documentation is safe to publish; the workflow requires an explicit revision rather than defaulting to the latest `main`.
 
 Validate documentation changes with:
 
