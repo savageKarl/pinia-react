@@ -36,6 +36,9 @@ jobs:
       - name: Run Lint, Format & Test Check
         run: pnpm run check && pnpm run test && pnpm run test-dts
 
+      - name: Test release and documentation workflow configuration
+        run: node --test .github/tests/docs-deployment.test.mjs
+
       - name: Verify Changeset
         if: ${{ !startsWith(github.head_ref, 'changeset-release/') }}
         run: pnpm exec changeset status --since=origin/main
