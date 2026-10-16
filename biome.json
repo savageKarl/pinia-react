@@ -7,13 +7,14 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!node_modules", "!.next", "!dist", "!build"]
+    "includes": ["**", "!**/node_modules", "!**/.next", "!**/dist", "!**/build"]
   },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
     "lineWidth": 120,
-    "indentWidth": 2
+    "indentWidth": 2,
+    "lineEnding": "lf"
   },
   "linter": {
     "enabled": true,
@@ -49,8 +50,7 @@
       "quoteStyle": "single",
       "jsxQuoteStyle": "single",
       "trailingCommas": "none",
-      "semicolons": "asNeeded",
-      "indentStyle": "space"
+      "semicolons": "asNeeded"
     }
   },
   "assist": {
