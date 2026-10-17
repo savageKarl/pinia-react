@@ -1,50 +1,20 @@
 # 简介
 
-pinia-react 是一个深受 Vue [Pinia](https://github.com/vuejs/pinia) 启发的 React 状态管理库。它利用 React Hooks 和 `useSyncExternalStore` 提供了一种简洁、响应式且对 TypeScript 友好的状态管理体验。
-
-它是 Pinia 的 React 改版，构建在相似的核心概念之上，但针对 React 生态系统进行了优化（例如，使用 `useSyncExternalStore` 以支持 React 18 的并发渲染）。
+Pinia-React 是一个受 Vue [Pinia](https://github.com/vuejs/pinia) 启发的 React 状态管理库。它通过 State、Getter 和 Action 组织共享状态，并使用 `useSyncExternalStore` 接入 React。
 
 ## 为什么要使用 Pinia-React？
 
-Pinia-React 允许你在组件或页面之间共享状态。它会自动追踪状态依赖，并且只更新必要的组件。需要注意的是，组件不会仅仅因为 Store 的数据变化而重新渲染；它是按需收集依赖的。例如，如果一个 Store 有两个数据 `count` 和 `name`，而你的组件只使用了 `count`，那么只有当 `count` 发生变化时，你的组件才会重新渲染。
+Pinia-React 会追踪组件在渲染时读取的状态。例如，Store 包含 `count` 和 `name`，组件只读取 `count` 时，修改 `name` 不会通过 Store 订阅触发该组件更新。
+
+## 什么时候使用 Store？
+
+主题、登录状态等多个组件或页面需要共享的数据适合放进 Store。复杂页面中需要协作的组件，也可以共享 Store 中的状态和业务逻辑。组件只负责读取数据和调用 Action；测试 Store 的逻辑时无需渲染组件。
+
+只在单个组件内使用、没有共享需求的状态，可以保留在组件中，不必创建 Store。
 
 ## 基础示例
 
-下面是 Pinia-React API 的一个基本示例（继续阅读本简介前，请确保你已经阅读了[快速开始](./getting-started.mdx)章节）。首先，你可以创建一个 Store：
-
-```tsx
-// stores/counter.ts
-import { defineStore } from 'pinia-react'
-
-const { useCounterStore, getCounterStore } = defineStore('counter', {
-  state: () => {
-    return { count: 0 }
-  },
-  actions: {
-    increment() {
-      this.count++
-    },
-  },
-})
-
-```
-
-然后，你可以在组件中**使用**这个 Store：
-
-```tsx
-import { useCounterStore } from './stores/counter';
-
-export function App() {
-  const counter = useCounterStore()
-
-  return (
-    <div>
-      <p>当前计数: {counter.count}</p>
-      <button onClick={() => counter.increment()}>增加</button>
-    </div>
-  )
-}
-```
+[快速开始](./getting-started.mdx)包含安装、初始化、定义 Store 和组件调用的完整计数器示例。
 
 ## 与 Pinia 的区别
 
@@ -60,9 +30,9 @@ React 状态管理库种类繁多。在这里，我们主要将其与生态中�
 
 ### 状态更新模式
 
-Pinia-React 和 Zustand 都使用 **不可变状态（Immutable State）模式**，这是可预测状态管理的最佳实践。关键的区别在于它们实现不可变性的 API 理念。
+下面的示例对比两种库更新不可变状态的写法。
 
-- **Pinia-React** 底层使用 Immer，提供了一种**直接修改（Mutable）风格的 API**。你可以编写简单、直观的代码，如 `this.count++`，而库会透明地为你处理新不可变状态对象的创建。这大大简化了开发，尤其是对于复杂或嵌套状态的更新。
+- **Pinia-React** 使用 Immer。Action 中的 `this.count++` 等修改会生成新的不可变状态。
 
 - **Zustand** 使用**函数式更新 API**。你必须在 `set` 函数中显式返回一个新的状态对象，并手动处理不可变性（例如使用 `...state` 展开语法）。
 
@@ -71,7 +41,7 @@ Pinia-React 和 Zustand 都使用 **不可变状态（Immutable State）模式**
 ```tsx
 import { defineStore } from 'pinia-react';
 
-const { useCounterStore, getCounterStore } = defineStore('counter', {
+export const { useCounterStore, getCounterStore } = defineStore('counter', {
   state: () => ({
     count: 0,
   }),

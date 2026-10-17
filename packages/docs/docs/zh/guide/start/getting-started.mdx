@@ -13,7 +13,9 @@ import { PackageManagerTabs, Tab, Tabs } from '@theme';
 
 <PackageManagerTabs command="install pinia-react" />
 
-创建一个 Pinia 实例，并在应用程序的根目录下调用一次。这对于确保所有 Store 共享同一个全局状态容器至关重要。
+## 初始化
+
+以下示例适用于已有 React 项目的浏览器客户端入口，假设 HTML 中已有 `id="app"` 的挂载元素。在渲染应用前调用一次 `createPinia()`，初始化供 Store 使用的状态容器。Next.js App Router 请使用 [Next.js 集成指南](../integrations/nextjs)中的根级 Provider 方案。
 
 <Tabs>
   <Tab label="TSX">
@@ -22,12 +24,14 @@ import { PackageManagerTabs, Tab, Tabs } from '@theme';
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
-import './style.css'
 import { createPinia } from 'pinia-react'
 
 createPinia()
 
-createRoot(document.querySelector('#app')!).render(
+const container = document.querySelector('#app')
+if (!container) throw new Error('Missing #app root element')
+
+createRoot(container).render(
   <StrictMode>
     <App />
   </StrictMode>
@@ -41,12 +45,14 @@ createRoot(document.querySelector('#app')!).render(
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
-import './style.css'
 import { createPinia } from 'pinia-react'
 
 createPinia()
 
-createRoot(document.querySelector('#app')!).render(
+const container = document.querySelector('#app')
+if (!container) throw new Error('Missing #app root element')
+
+createRoot(container).render(
   <StrictMode>
     <App />
   </StrictMode>
@@ -55,18 +61,48 @@ createRoot(document.querySelector('#app')!).render(
   </Tab>
 </Tabs>
 
-## 什么是 Store？
+## 定义 Store
 
-Store（仓库）是一个实体，它封装了应用中的全局状态（State）、修改状态的业务逻辑（Actions）以及从状态衍生的可读数据（Getters）。它允许应用中的任何组件访问和修改共享数据，从而实现跨组件通信和状态同步。
+Store 将共享状态（State）、衍生数据（Getter）和修改状态的方法（Action）放在一起。在 `src/stores/counter.ts` 中定义一个计数器：
 
-*   **单一数据源（Single Source of Truth）：** Store 将所有共享状态集中在一个地方，避免了数据分散和混乱，使应用状态可预测且易于追踪。
-*   **解耦（Decoupling）：** Store 将状态管理与组件分离。组件只需要关心如何使用和展示数据，而不需要关心数据来自哪里或如何被修改，这极大地降低了组件间的耦合度。
-*   **可测试性（Testability）：** 集中式的状态管理和逻辑使得编写单元测试变得更简单，因为你可以在不渲染组件的情况下测试 Store 的行为。
+```ts title="src/stores/counter.ts"
+import { defineStore } from 'pinia-react'
 
-## 什么时候应该使用 Store？
+export const { useCounterStore, getCounterStore } = defineStore('counter', {
+  state: () => {
+    return { count: 0 }
+  },
+  actions: {
+    increment() {
+      this.count++
+    },
+  },
+})
+```
 
-Store 应该包含那些需要在整个应用中访问的数据，例如主题配置、用户登录状态等。或者，如果你有一个复杂的交互页面，包含多个拥有各自状态的组件，这种场景下也可以考虑使用 Store 来管理状态和业务逻辑，以提高效率。
+`defineStore('counter', ...)` 会生成 `useCounterStore` 和 `getCounterStore`。组件中使用 Hook；组件外使用普通函数 `getCounterStore()`，详见[在组件外使用 Store](../core-concepts/outside-component-usage.mdx)。
 
-## 什么时候不应该使用 Store？
+## 在组件中使用
 
-如果状态只在当前页面或组件中使用，且没有通信或依赖需求，那么就没有必要创建和管理一个单独的 Store。
+在 `src/App.tsx` 中读取 `count`，并通过 Action 修改它：
+
+```tsx title="src/App.tsx"
+import { useCounterStore } from './stores/counter'
+
+export function App() {
+  const counter = useCounterStore()
+
+  return (
+    <div>
+      <p>当前计数: {counter.count}</p>
+      <button onClick={() => counter.increment()}>增加</button>
+    </div>
+  )
+}
+```
+
+启动现有项目的开发服务器，点击“增加”，计数应从 0 变为 1。Store 的公开状态只读，不要在组件中直接执行 `counter.count++`。
+
+JSX 项目可使用相同的 Store 和组件代码，分别保存为 `.js` 和 `.jsx` 文件。
+
+继续阅读 [State](../core-concepts/state)、[Getter](../core-concepts/getters) 和 [Action](../core-concepts/actions)，了解类型推导、衍生数据和异步修改。

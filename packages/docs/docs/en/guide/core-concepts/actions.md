@@ -1,17 +1,13 @@
 # Actions
 
-Actions are methods used to modify the **State**. They are where your business logic lives. Actions can be asynchronous and may contain API calls, complex calculations, and mutations to multiple state variables.
+Actions change State and organize business logic. They can access the Store's State, Getters, and other Actions, and perform asynchronous requests or calculations.
 
-**Concept Explanation:**
-
-*   **Business Logic:** Actions are the ideal place to centralize your business logic, keeping components clean.
-*   **Asynchronous:** Actions can be `async` functions. You can `await` API calls or any other Promise inside them.
-*   **State Mutations:** All state modifications should ideally happen within an action, making state changes predictable and trackable.
-
-Define actions via the `actions` property in `defineStore()`.
+Define methods in the `actions` option of `defineStore()` and write state through `this`. Components and ordinary business code cannot mutate public state directly; `$patch()` and `$reset()` are also available for batching and resetting changes.
 
 ```tsx
-export const { useCounterStore } = defineStore('main', {
+import { defineStore } from 'pinia-react'
+
+export const { useCounterStore } = defineStore('counter', {
   state: () => ({
     count: 0,
   }),
@@ -26,34 +22,7 @@ export const { useCounterStore } = defineStore('main', {
 });
 ```
 
-Inside an action, `this` refers to the store instance, giving you access to state, getters, and other actions with full type support.
-
-Here's an example of an asynchronous action:
-
-```tsx
-import { mande } from 'mande';
-
-const api = mande('/api/users');
-
-export const { useUsersStore } = defineStore('users', {
-  state: () => ({
-    userData: null,
-  }),
-
-  actions: {
-    async registerUser(login, password) {
-      try {
-        const response = await api.post({ login, password });
-        this.userData = response;
-        showTooltip(`Welcome back ${this.userData.name}!`);
-      } catch (error) {
-        showTooltip(error.message);
-        return error;
-      }
-    },
-  },
-});
-```
+In a regular method, `this` refers to the current Store, with inferred types for State, Getters, and Actions.
 
 You can call actions just like any other method from your components:
 
@@ -67,7 +36,25 @@ export function App() {
 }
 ```
 
+Actions can use `async` / `await`. For example, wait one second before incrementing the count:
+
+```tsx
+import { defineStore } from 'pinia-react'
+
+export const { useCounterStore } = defineStore('counter', {
+  state: () => ({ count: 0 }),
+  actions: {
+    async incrementLater() {
+      await new Promise<void>((resolve) => setTimeout(resolve, 1000))
+      this.count++
+    },
+  },
+})
+```
+
 ## Action commits and asynchronous work
+
+### State before and after await
 
 Actions use a stable mutation proxy. Reads and writes resolve the latest committed state before and after `await`. Nested references captured before an await remain usable:
 
@@ -81,7 +68,11 @@ actions: {
 }
 ```
 
-Each ordinary assignment commits immediately and emits its own MutationEvent when state changes. An action that only reads state emits nothing. Concurrent actions update the latest state, and nested actions retain each other's changes. An action's return value or Promise is preserved; actions never expose an Immer draft.
+Concurrent Actions update the latest state, and nested Actions retain each other's changes. Actions preserve ordinary return values and Promise semantics without exposing an Immer Draft.
+
+### Multiple writes and batching
+
+Each ordinary assignment commits immediately and emits a `MutationEvent` if state changes. An Action that only reads state emits no event.
 
 Use an explicit batch when several writes must commit together:
 
@@ -93,11 +84,15 @@ this.$patch((state) => {
 this.$patch({ loading: false, error: null })
 ```
 
-Both patch forms produce one commit. Object patches replace the supplied top-level fields without deep merging. The array methods push, pop, shift, unshift, splice, sort, reverse, fill and copyWithin also commit once per call.
+Both patch forms produce one commit when state changes and no event when it does not. Object patches replace the supplied top-level fields without deep merging. The array methods push, pop, shift, unshift, splice, sort, reverse, fill and copyWithin also commit once per call.
 
-If an action throws or rejects, already committed changes remain. Handle cleanup explicitly with try/catch/finally. A throwing synchronous $patch recipe commits none of its draft changes. Drafts provided to $patch are valid only inside its synchronous callback; do not retain them across await.
+### Errors and rollback
 
-Every commit from one action shares meta.actionId. Nested actions receive a new ID and meta.parentActionId. Patches and resets inside an action keep their own mutation type and inherit the action metadata.
+If an Action throws or rejects, already committed changes remain. Handle cleanup explicitly with try/catch/finally. A throwing synchronous $patch recipe commits none of its draft changes. Drafts provided to $patch are valid only inside its synchronous callback; do not retain them across await.
+
+### Action event metadata
+
+Events from one Action share `meta.actionId`. Nested Actions receive their own ID and link to their parent through `meta.parentActionId`. Calls to `$patch()` and `$reset()` inside an Action keep their own event types and inherit Action metadata.
 
 ## Accessing Actions from Other Stores
 

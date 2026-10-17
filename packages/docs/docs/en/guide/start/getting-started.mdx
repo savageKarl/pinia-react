@@ -13,7 +13,9 @@ Install pinia-react with your preferred package manager:
 
 <PackageManagerTabs command="install pinia-react" />
 
-Create a pinia instance and call it once at the root of your application. This is essential for all stores to share the same global state container.
+## Initialize Pinia
+
+This example uses the browser entry point of an existing React project, with an element whose `id` is `app` in the HTML. Call `createPinia()` once before rendering the application to initialize the state container used by Stores. For Next.js App Router, use the root Provider setup in the [Next.js guide](../integrations/nextjs).
 
 <Tabs>
   <Tab label="TSX">
@@ -22,12 +24,14 @@ Create a pinia instance and call it once at the root of your application. This i
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
-import './style.css'
 import { createPinia } from 'pinia-react'
 
 createPinia()
 
-createRoot(document.querySelector('#app')!).render(
+const container = document.querySelector('#app')
+if (!container) throw new Error('Missing #app root element')
+
+createRoot(container).render(
   <StrictMode>
     <App />
   </StrictMode>
@@ -41,12 +45,14 @@ createRoot(document.querySelector('#app')!).render(
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
-import './style.css'
 import { createPinia } from 'pinia-react'
 
 createPinia()
 
-createRoot(document.querySelector('#app')!).render(
+const container = document.querySelector('#app')
+if (!container) throw new Error('Missing #app root element')
+
+createRoot(container).render(
   <StrictMode>
     <App />
   </StrictMode>
@@ -55,18 +61,48 @@ createRoot(document.querySelector('#app')!).render(
   </Tab>
 </Tabs>
 
-## What is a Store?
+## Define a Store
 
-A Store is a container that encapsulates the global state (State), business logic for modifying the state (Actions), and readable data derived from the state (Getters) in an application. It allows any component in the application to access and modify shared data, thereby achieving cross-component communication and state synchronization.
+A Store groups shared state, derived values (Getters), and methods that change state (Actions). Define a counter in `src/stores/counter.ts`:
 
-*   **Single Source of Truth:** The Store centralizes all shared states in one place, avoiding data dispersion and confusion, making the application state predictable and easy to track.
-*   **Decoupling:** The Store separates state management from components. Components only need to care about how to use and display data, not where the data comes from or how to modify it, which greatly reduces the coupling between components.
-*   **Testability:** Centralized state management and logic make writing unit tests simpler because you can test the Store's behavior without rendering components.
+```ts title="src/stores/counter.ts"
+import { defineStore } from 'pinia-react'
 
-## When Should You Use a Store?
+export const { useCounterStore, getCounterStore } = defineStore('counter', {
+  state: () => {
+    return { count: 0 }
+  },
+  actions: {
+    increment() {
+      this.count++
+    },
+  },
+})
+```
 
-A store should contain data that can be accessed by the entire application, such as themes, user login status, etc. Or if you have a complex interactive page with multiple components, each having its own state, this scenario can be considered for using a store to manage state and business logic to improve efficiency.
+`defineStore('counter', ...)` generates `useCounterStore` and `getCounterStore`. Use the Hook in components and the plain `getCounterStore()` function outside them. See [using Stores outside components](../core-concepts/outside-component-usage.mdx).
 
-## When Should You NOT Use a Store?
+## Use the Store in a component
 
-If the state is only used in the current page or component, and there is no need for communication or dependency, there is no need to create and manage a separate store.
+In `src/App.tsx`, read `count` and change it through an Action:
+
+```tsx title="src/App.tsx"
+import { useCounterStore } from './stores/counter'
+
+export function App() {
+  const counter = useCounterStore()
+
+  return (
+    <div>
+      <p>Current Count: {counter.count}</p>
+      <button onClick={() => counter.increment()}>Increment</button>
+    </div>
+  )
+}
+```
+
+Start your project's development server and click “Increment”; the count should change from 0 to 1. Public Store state is read-only: do not call `counter.count++` directly in a component.
+
+For a JSX project, use the same Store and component code in `.js` and `.jsx` files.
+
+Continue with [State](../core-concepts/state), [Getters](../core-concepts/getters), and [Actions](../core-concepts/actions) for type inference, derived values, and asynchronous changes.
