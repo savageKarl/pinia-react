@@ -1,13 +1,8 @@
 # Getters
 
-Getter 是用于根据 Store 的 State 计算衍生状态的函数。
+Getter 根据 State 或其他 Getter 计算衍生数据。结果会被缓存，依赖变化后才重新计算。
 
-**概念解析：**
-
-*   **计算值（Computed Values）：** 可以把它们看作是 Store 的计算属性（Computed Properties）。当需要根据其他状态属性计算数据时，它们非常有用。
-*   **缓存（Cached）：** Getter 是带缓存的。只有当它依赖的项（State 属性或其他 Getter）发生变化时，它才会重新计算，这能有效提高性能。
-
-通过 `defineStore()` 的 `getters` 属性来定义 Getter。它们接收 `state` 作为第一个参数。
+在 `defineStore()` 的 `getters` 中定义 Getter；第一个参数是当前 Store 的 `state`。
 
 ```tsx
 export const { useCounterStore, getCounterStore } = defineStore('counter', {
@@ -59,7 +54,7 @@ export function CounterComponent() {
 
 ## 访问其他 Store 的 Getter
 
-要使用其他 Store 的 Getter，只需获取那个 Store 的实例并使用即可。请记住，在 React 组件之外的场景（例如在另一个 Store 的逻辑中），应使用自动生成的 `getOtherStore` 函数。原有的 `getStore` 方法仍然可以使用。
+在 Getter 中调用另一个 Store 的 `getOtherStore()`，再读取需要的属性；不要调用 React Hook。通用的 `getStore()` 别名也可使用。
 
 ```tsx
 import { getOtherStore } from './other-store'

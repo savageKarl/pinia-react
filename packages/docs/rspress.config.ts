@@ -15,20 +15,20 @@ export default defineConfig({
       lang: 'en',
       label: 'English',
       title: 'Pinia-React',
-      description: 'Static Site Generator'
+      description: 'React state management with State, Getters, and Actions'
     },
     {
       lang: 'zh',
       label: '简体中文',
       title: 'Pinia-React',
-      description: '静态网站生成器'
+      description: '通过 State、Getter 和 Action 管理 React 共享状态'
     }
   ],
   themeConfig: {
     locales: [
       {
         lang: 'en',
-        outlineTitle: 'ON THIS Page',
+        outlineTitle: 'On this page',
         label: ''
       },
       {

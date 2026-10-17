@@ -19,16 +19,16 @@ hero:
     alt: Logo
 features:
   - title: Automatic Render Optimization
-    details: Automatically tracks state dependencies, ensuring components re-render only when the data they use actually changes.
+    details: Tracks state read during rendering so Store updates notify components that depend on the changed fields.
     icon: 🔄
   - title: 'React Concurrent Rendering Support'
-    details: Ensure seamless compatibility with React 18's concurrent features through `useSyncExternalStore`.
+    details: Connects to React concurrent rendering through `useSyncExternalStore`.
     icon: ⚡️
   - title: Developer Friendly
     details: Optional Redux DevTools integration for inspecting opted-in stores and navigating their state history.
     icon: 🕵️
   - title: TypeScript Friendly
-    details: Built-in type inference for complete type safety without additional configuration.
+    details: Infers types for State, Getters, and Actions.
     icon: 🔍
   - title: Plugin System
     details: Support extensions like persistence and logging to easily customize Store behavior.

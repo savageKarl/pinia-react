@@ -1,30 +1,24 @@
 # State
 
-State is the core of a Store. It's a reactive object that contains the raw data that needs to be shared across your application.
+State holds data shared by your application. Components subscribe to state read during rendering and update when that data changes.
 
-**Key Concepts:**
+Public state is read-only, including state returned to components and by `getStore()`. Change it through Actions, `$patch()`, or `$reset()`; Getters only read and compute values. Immer turns writes inside Actions and `$patch()` into immutable state updates.
 
-*   **Reactivity:** The state is reactive. When data in the State changes, all components that depend on that data will automatically update their views.
-*   **Immutability:** Under the hood, state modifications are handled by `immer`, which ensures that even though you write "mutating" code, the underlying state is updated immutably.
-
-The state is defined as a function that returns the initial state object.
+Define a `state()` factory that returns the initial state. Prefer JSON-compatible strings, finite numbers, booleans, `null`, plain objects, and arrays. Reactive mutation and transfer are not guaranteed for `Date`, `Map`, `Set`, class instances, functions, Promises, or browser objects.
 
 ```tsx
 import { defineStore } from 'pinia-react'
 
-const { useStore, getStore } = defineStore('counter', {
+export const { useCounterStore, getCounterStore } = defineStore('counter', {
   // An arrow function is recommended for full type inference
   state: () => {
     return {
       count: 0,
       name: 'Eduardo',
-      items: [],
+      items: [] as { name: string; quantity: number }[],
     }
   },
 })
-
-export const useMyStore = useStore
-export const getMyStore = getStore
 ```
 
 ## TypeScript
@@ -71,13 +65,13 @@ How you access state depends on the context:
 
 ### In React Components
 
-Inside a React component or a custom hook, use the generated `useCounterStore` hook to get the store instance. The generic `useStore` helper is also available for backwards compatibility.
+Inside a React component or custom Hook, call `useCounterStore()`. Outside components, use `getCounterStore()` as described in [using Stores outside components](./outside-component-usage.mdx). The generic `useStore` and `getStore` aliases are also available.
 
 ```tsx
-import { useMyStore } from './stores/myStore';
+import { useCounterStore } from './stores/counter';
 
 function MyComponent() {
-  const store = useMyStore();
+  const store = useCounterStore();
   
   return <div>Count: {store.count}</div>;
 }
@@ -101,7 +95,7 @@ defineStore('counter', {
 
 ## Resetting State
 
-You can reset the state to its initial value by calling the store's `$reset()` method.
+Calling `$reset()` runs the `state()` factory again to restore its defaults, even if the Store was initialized from a server snapshot. It does not restore that snapshot.
 
 ```tsx
 const store = useCounterStore()
@@ -132,14 +126,14 @@ A nested object supplied in a patch must contain its complete replacement value.
 
 ## Replacing State
 
-You cannot directly replace the entire `$state` object. The following will show a warning and will not work:
+You cannot directly replace the entire `$state` object. The following warns and also throws in strict mode:
 
 ```tsx
 // This will NOT work
 store.$state = { count: 24 }
 ```
 
-To achieve a "state replacement" effect, you can use `$patch` and assign the properties from your new state object to the draft. `Object.assign()` is a convenient way to do this.
+Use `Object.assign()` inside `$patch()` to overwrite fields. It does not remove existing fields omitted from the new object:
 
 ```tsx
 const newState = {
@@ -168,7 +162,7 @@ const unsubscribe = cartStore.$subscribe((state, prevState) => {
 unsubscribe()
 ```
 
-## Mutation metadata and serializable state
+## Mutation metadata
 
 The optional third subscription argument is the committed event. Existing callbacks with two parameters remain valid:
 
@@ -179,5 +173,3 @@ store.$subscribe((state, prevState, event) => {
 ```
 
 Getter-only invalidation from another store updates dependent components without calling state subscriptions. The mutation event belongs to the store whose state actually changed.
-
-Use JSON-compatible strings, finite numbers, booleans, null, plain objects and arrays for state. Reactive mutation and transport of Date, Map, Set, class instances, functions, Promise and browser objects are not guaranteed. Public state is read-only; use actions, $patch or $reset. $reset recreates the state factory defaults, including when the store originally received a server snapshot.

@@ -1,30 +1,24 @@
 # State (状态)
 
-State 是 Store 的核心。它是一个响应式对象，包含了需要在应用中共享的原始数据。
+State 保存应用需要共享的数据。组件会订阅渲染时读取的状态，相关数据变化时更新视图。
 
-**核心概念：**
+公开状态只读，包括组件和 `getStore()` 返回的状态。请通过 Action、`$patch()` 或 `$reset()` 修改；Getter 只用于读取和计算。Immer 会将 Action 和 `$patch()` 中的修改转换为不可变状态更新。
 
-*   **响应式（Reactivity）：** State 是响应式的。当 State 中的数据发生变化时，所有依赖该数据的组件都会自动更新视图。
-*   **不可变性（Immutability）：** 在底层，状态修改由 `immer` 处理。这意味着即使你写的是“可变（Mutating）”风格的代码，底层状态也是以不可变的方式更新的。
-
-State 被定义为一个返回初始状态对象的函数。
+使用 `state()` 工厂返回初始状态。推荐使用 JSON 兼容的字符串、有限数字、布尔值、`null`、普通对象和数组。`Date`、`Map`、`Set`、类实例、函数、Promise 和浏览器对象的响应式修改与传输不作保证。
 
 ```tsx
 import { defineStore } from 'pinia-react'
 
-const { useStore, getStore } = defineStore('counter', {
+export const { useCounterStore, getCounterStore } = defineStore('counter', {
   // 推荐使用箭头函数以获得完整的类型推导
   state: () => {
     return {
       count: 0,
       name: 'Eduardo',
-      items: [],
+      items: [] as { name: string; quantity: number }[],
     }
   },
 })
-
-export const useMyStore = useStore
-export const getMyStore = getStore
 ```
 
 ## TypeScript
@@ -71,13 +65,13 @@ const { useStore, getStore } = defineStore('counter', {
 
 ### 在 React 组件中
 
-在 React 组件或自定义 Hook 内部，使用 `useStore` Hook 来获取 Store 实例。
+在 React 组件或自定义 Hook 内部，调用 `useCounterStore()`。组件外使用 `getCounterStore()`，详见[在组件外使用 Store](./outside-component-usage.mdx)。也可以使用通用的 `useStore` 和 `getStore` 别名。
 
 ```tsx
-import { useMyStore } from './stores/myStore';
+import { useCounterStore } from './stores/counter';
 
 function MyComponent() {
-  const store = useMyStore();
+  const store = useCounterStore();
   
   return <div>Count: {store.count}</div>;
 }
@@ -101,7 +95,7 @@ defineStore('counter', {
 
 ## 重置 State
 
-你可以通过调用 Store 的 `$reset()` 方法将 State 重置为初始值。
+调用 `$reset()` 会重新执行 `state()` 工厂，恢复默认值。即使 Store 最初使用了服务端快照，也不会恢复那份快照。
 
 ```tsx
 const store = useCounterStore()
@@ -132,14 +126,14 @@ store.$patch({ count: 2, name: 'Ada' })
 
 ## 替换 State
 
-你不能直接替换整个 `$state` 对象。下面的写法会触发警告并且不会生效：
+你不能直接替换整个 `$state` 对象。下面的写法会触发警告；在严格模式下还会抛错：
 
 ```tsx
 // 这样写是无效的
 store.$state = { count: 24 }
 ```
 
-要实现“替换 State”的效果，你可以使用 `$patch` 并将新状态对象的属性赋值给 draft。`Object.assign()` 是一个便捷的方法。
+可以在 `$patch()` 中通过 `Object.assign()` 覆盖字段。它不会删除新对象中未提供的已有字段：
 
 ```tsx
 const newState = {
@@ -168,7 +162,7 @@ const unsubscribe = cartStore.$subscribe((state, prevState) => {
 unsubscribe()
 ```
 
-## Mutation 元数据与可序列化状态
+## Mutation 元数据
 
 订阅回调的可选第三个参数为已提交事件。原有的双参数回调仍然有效：
 
@@ -179,5 +173,3 @@ store.$subscribe((state, prevState, event) => {
 ```
 
 其他 Store 引起的 Getter 缓存失效会更新依赖组件，不会触发状态订阅；MutationEvent 只属于真实改变状态的 Store。
-
-推荐使用 JSON 兼容的字符串、有限数字、布尔值、null、普通对象和数组。Date、Map、Set、class 实例、函数、Promise 和浏览器对象的响应式修改与传输不作保证。公开状态只读，请使用 Action、$patch 或 $reset 修改。$reset 会重新执行 state 工厂恢复默认状态，即使该 Store 最初使用了服务端快照。

@@ -1,13 +1,8 @@
 # Getters
 
-Getters are functions that compute derived state from your Store's state.
+Getters compute values from State or other Getters. Results are cached and recomputed when their dependencies change.
 
-**Concept Explanation:**
-
-*   **Computed Values:** Think of them as computed properties for your store. They are useful for calculating data that depends on other state properties.
-*   **Cached:** Getters are cached. They will only re-evaluate when one of their dependencies (a state property or another getter) has changed, which improves performance.
-
-Define getters using the `getters` property in `defineStore()`. They receive `state` as their first argument.
+Define Getters in the `getters` option of `defineStore()`. The first argument is the current Store's `state`.
 
 ```tsx
 export const { useCounterStore, getCounterStore } = defineStore('counter', {
@@ -59,7 +54,7 @@ export function CounterComponent() {
 
 ## Accessing Getters from Other Stores
 
-To use a getter from another store, get that store's instance and use it. For use cases outside of React components, like inside another store's logic, use the generated `getOtherStore` helper. The generic `getStore` helper remains available for backwards compatibility.
+Call the other Store's `getOtherStore()` inside a Getter, then read the property you need. Do not call a React Hook there. The generic `getStore()` alias is also available.
 
 ```tsx
 import { getOtherStore } from './other-store'
