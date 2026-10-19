@@ -1,7 +1,13 @@
+import { isDisposed } from './lifecycle'
 import type { MutationMeta, Pinia } from './types'
 
 const sequences = new WeakMap<Pinia, number>()
 const activeActions = new WeakMap<Pinia, MutationMeta>()
+
+export function clearActionContext(pinia: Pinia): void {
+  sequences.delete(pinia)
+  activeActions.delete(pinia)
+}
 
 export function createActionMeta(
   pinia: Pinia,
@@ -26,7 +32,7 @@ export function runWithAction<T>(pinia: Pinia, meta: MutationMeta, run: () => T)
   try {
     return run()
   } finally {
-    if (previous) activeActions.set(pinia, previous)
+    if (previous && !isDisposed(pinia)) activeActions.set(pinia, previous)
     else activeActions.delete(pinia)
   }
 }

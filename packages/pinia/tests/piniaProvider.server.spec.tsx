@@ -1,29 +1,39 @@
 // @vitest-environment node
-import { renderToString } from 'react-dom/server'
+import { PassThrough } from 'node:stream'
+import { Suspense } from 'react'
+import { renderToPipeableStream, renderToString } from 'react-dom/server'
 import { createPinia, defineStore, getActivePinia, PiniaProvider } from '../src'
 
-const { useStore } = defineStore('request', { state: () => ({ user: '' }) })
+const requestGetter = vi.fn((state: { user: string }) => state.user.toUpperCase())
+const { useStore } = defineStore('request', {
+  state: () => ({ user: '' }),
+  getters: { normalizedUser: requestGetter }
+})
 function User() {
-  return <span>{useStore().user}</span>
+  const store = useStore()
+  return (
+    <span>
+      {store.user}:{store.normalizedUser}
+    </span>
+  )
 }
 
 it('isolates server render snapshots and never writes request state to activePinia', () => {
   const active = createPinia()
-  expect(
-    renderToString(
-      <PiniaProvider initialStores={{ request: { user: 'alice' } }}>
-        <User />
-      </PiniaProvider>
-    )
-  ).toContain('alice')
+  const alice = renderToString(
+    <PiniaProvider initialStores={{ request: { user: 'alice' } }}>
+      <User />
+    </PiniaProvider>
+  )
+  expect(alice.replaceAll('<!-- -->', '')).toContain('alice:ALICE')
   expect(getActivePinia()).toBe(active)
-  expect(
-    renderToString(
-      <PiniaProvider initialStores={{ request: { user: 'bob' } }}>
-        <User />
-      </PiniaProvider>
-    )
-  ).toContain('bob')
+  const bob = renderToString(
+    <PiniaProvider initialStores={{ request: { user: 'bob' } }}>
+      <User />
+    </PiniaProvider>
+  )
+  expect(bob.replaceAll('<!-- -->', '')).toContain('bob:BOB')
+  expect(requestGetter).toHaveBeenCalledTimes(2)
   expect(getActivePinia()).toBe(active)
   expect(active.state).toEqual({})
   expect(active._s.size).toBe(0)
@@ -66,4 +76,112 @@ it('registers server Provider plugins before store creation without changing act
   expect(plugin).toHaveBeenCalledOnce()
   expect(getActivePinia()).toBe(active)
   expect(active.state).toEqual({})
+})
+
+it('isolates overlapping streaming requests, late stores and nested Providers including plugin effects', async () => {
+  const active = createPinia()
+  const { useStore: useLate } = defineStore('stream-request', {
+    state: () => ({ user: 'default' }),
+    getters: { label: (state) => state.user.toUpperCase() }
+  })
+  const instances = new Map<string, unknown>()
+  const effects: string[] = []
+  function begin(user: string) {
+    let ready = false
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = () => {
+        ready = true
+        resolve()
+      }
+    })
+    function Late() {
+      if (!ready) throw gate
+      const store = useLate()
+      return (
+        <b>
+          {store.user}:{store.label}
+        </b>
+      )
+    }
+    function Inner() {
+      return <i>{useLate().user}</i>
+    }
+    let shellReady!: () => void
+    const shell = new Promise<void>((resolve) => {
+      shellReady = resolve
+    })
+    const chunks: string[] = []
+    const output = new PassThrough()
+    const result = new Promise<string>((resolve, reject) => {
+      output.on('data', (chunk) => chunks.push(String(chunk)))
+      output.on('end', () => resolve(chunks.join('').replaceAll('<!-- -->', '')))
+      output.on('error', reject)
+      const stream = renderToPipeableStream(
+        <PiniaProvider
+          initialStores={{ 'stream-request': { user } }}
+          plugins={[
+            ({ pinia, store }) => {
+              instances.set(user, pinia)
+              effects.push(store.user)
+            }
+          ]}
+        >
+          <PiniaProvider
+            initialStores={{ 'stream-request': { user: 'nested-' + user } }}
+            plugins={[
+              ({ pinia, store }) => {
+                instances.set('nested-' + user, pinia)
+                effects.push(store.user)
+              }
+            ]}
+          >
+            <Inner />
+          </PiniaProvider>
+          <Suspense fallback={<small>waiting</small>}>
+            <Late />
+          </Suspense>
+        </PiniaProvider>,
+        {
+          onShellReady() {
+            stream.pipe(output)
+            shellReady()
+          },
+          onError: reject
+        }
+      )
+    })
+    return { release, result, shell }
+  }
+  const alice = begin('alice')
+  const bob = begin('bob')
+  await Promise.all([alice.shell, bob.shell])
+  bob.release()
+  const bobHtml = await bob.result
+  expect(bobHtml).toContain('bob:BOB')
+  expect(bobHtml).toContain('nested-bob')
+  expect(bobHtml).not.toContain('alice')
+  alice.release()
+  const aliceHtml = await alice.result
+  expect(aliceHtml).toContain('alice:ALICE')
+  expect(aliceHtml).toContain('nested-alice')
+  expect(aliceHtml).not.toContain('bob')
+  expect(effects.sort()).toEqual(['alice', 'bob', 'nested-alice', 'nested-bob'])
+  expect(new Set(instances.values()).size).toBe(4)
+  expect(getActivePinia()).toBe(active)
+  expect(active.state).toEqual({})
+})
+
+it('renders supplied Pinia state on the server without reinitialization or changing active Pinia', () => {
+  const owner = createPinia()
+  owner._initialStores.request = { user: 'owned' }
+  const active = createPinia()
+  const html = renderToString(
+    <PiniaProvider pinia={owner}>
+      <User />
+    </PiniaProvider>
+  )
+  expect(html.replaceAll('<!-- -->', '')).toContain('owned:OWNED')
+  expect(getActivePinia()).toBe(active)
+  expect(owner.state.request).toEqual({ user: 'owned' })
 })

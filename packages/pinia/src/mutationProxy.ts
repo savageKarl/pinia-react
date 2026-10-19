@@ -8,17 +8,88 @@ export function isPlainObjectOrArray(value: unknown): value is object {
   return prototype === Object.prototype || prototype === null
 }
 
+export function assertStateKey(key: string | symbol): asserts key is string {
+  if (typeof key === 'symbol')
+    throw new TypeError('[pinia-react] Symbol keys are not supported in Store state. Use string keys instead.')
+}
+
+export function assertStateValue(value: unknown, seen = new WeakSet<object>()): void {
+  if (!isPlainObjectOrArray(value) || seen.has(value)) return
+  seen.add(value)
+  for (const key of Reflect.ownKeys(value)) {
+    assertStateKey(key)
+    assertStateValue(Reflect.get(value, key), seen)
+  }
+}
+
+const warnedOpaqueValues = new WeakSet<object>()
+
+export function warnIfOpaqueStateValue(value: unknown): void {
+  if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return
+  if (isPlainObjectOrArray(value) || warnedOpaqueValues.has(value)) return
+  warnedOpaqueValues.add(value)
+  console.warn(
+    '[pinia-react] Special state values are opaque. In-place mutation is not supported and will not emit patches, invalidate getters, or notify subscribers. Use plain data or replace the entire value through an Action or $patch().'
+  )
+}
+
+// Guard function patches before Immer can copy or discard unsupported keys.
+export function createStateWarningProxy<T extends object>(state: T): T {
+  const proxies = new WeakMap<object, object>()
+  const wrap = <U extends object>(target: U): U => {
+    const proxy = new Proxy(target, {
+      get(obj, key, receiver) {
+        const value = Reflect.get(obj, key, receiver)
+        if (!Object.hasOwn(obj, key)) return value
+        if (isPlainObjectOrArray(value)) return proxies.get(value) ?? wrap(value)
+        warnIfOpaqueStateValue(value)
+        return value
+      },
+      set(obj, key, value) {
+        assertStateKey(key)
+        return Reflect.set(obj, key, unwrapStateValue(value))
+      },
+      deleteProperty(obj, key) {
+        assertStateKey(key)
+        return Reflect.deleteProperty(obj, key)
+      },
+      defineProperty(obj, key, descriptor) {
+        assertStateKey(key)
+        if ('value' in descriptor) assertStateValue(descriptor.value)
+        return Reflect.defineProperty(obj, key, descriptor)
+      },
+      getOwnPropertyDescriptor(obj, key) {
+        const descriptor = Reflect.getOwnPropertyDescriptor(obj, key)
+        if (descriptor && 'value' in descriptor && isPlainObjectOrArray(descriptor.value)) {
+          return { ...descriptor, value: proxies.get(descriptor.value) ?? wrap(descriptor.value) }
+        }
+        return descriptor
+      }
+    })
+    proxies.set(target, proxy)
+    return proxy
+  }
+  return wrap(state)
+}
+
 const proxyValues = new WeakMap<object, () => unknown>()
 
 // Resolve action references before putting them into committed state or returning removed drafts.
 export function unwrapStateValue<T>(value: T): T {
   if (value === null || typeof value !== 'object') return value
   const read = proxyValues.get(value)
-  if (read) return read() as T
-  if (isDraft(value)) return current(value) as T
-  if (!isPlainObjectOrArray(value)) return value
+  if (read) return unwrapStateValue(read()) as T
+  if (isDraft(value)) {
+    assertStateValue(value)
+    return current(value) as T
+  }
+  if (!isPlainObjectOrArray(value)) {
+    warnIfOpaqueStateValue(value)
+    return value
+  }
   let copy: object | undefined
-  for (const key of Object.keys(value)) {
+  for (const key of Reflect.ownKeys(value)) {
+    assertStateKey(key)
     const original = Reflect.get(value, key)
     const resolved = unwrapStateValue(original)
     if (resolved !== original) {
@@ -42,11 +113,8 @@ export function createMutationProxy<S extends StateTree>(
     for (const key of path) value = Reflect.get(value as object, key)
     return value
   }
-  const proxies = new Map<string, object>()
   const createProxy = (path: StatePath): any => {
-    const cacheKey = JSON.stringify(path)
-    const cached = proxies.get(cacheKey)
-    if (cached) return cached
+    const proxies = new Map<PropertyKey, object>()
     const target = Array.isArray(atPath(getState(), path)) ? [] : {}
     const proxy: object = new Proxy(target, {
       get(_target, key, receiver) {
@@ -69,10 +137,18 @@ export function createMutationProxy<S extends StateTree>(
           }
         }
         const value = Reflect.get(state, key, receiver)
-        if (typeof key === 'string' && isPlainObjectOrArray(value)) return createProxy([...path, key])
+        if (typeof key === 'symbol') return value
+        if (isPlainObjectOrArray(value)) {
+          const child = proxies.get(key) ?? createProxy([...path, key])
+          proxies.set(key, child)
+          return child
+        }
+        if (Object.hasOwn(state, key)) warnIfOpaqueStateValue(value)
         return value
       },
       set(_target, key, value) {
+        getState()
+        assertStateKey(key)
         const resolved = unwrapStateValue(value)
         commit((draft) => {
           Reflect.set(atPath(draft, path), key, resolved)
@@ -80,10 +156,18 @@ export function createMutationProxy<S extends StateTree>(
         return true
       },
       deleteProperty(_target, key) {
+        getState()
+        assertStateKey(key)
         commit((draft) => {
           Reflect.deleteProperty(atPath(draft, path), key)
         })
         return true
+      },
+      defineProperty(target, key, descriptor) {
+        getState()
+        assertStateKey(key)
+        if ('value' in descriptor) assertStateValue(descriptor.value)
+        return Reflect.defineProperty(target, key, descriptor)
       },
       has(_target, key) {
         return Reflect.has(atPath(getState(), path), key)
@@ -94,10 +178,10 @@ export function createMutationProxy<S extends StateTree>(
       getOwnPropertyDescriptor(_target, key) {
         const descriptor = Reflect.getOwnPropertyDescriptor(atPath(getState(), path), key)
         if (!descriptor) return undefined
+        if ('value' in descriptor && isPlainObjectOrArray(descriptor.value)) descriptor.value = Reflect.get(proxy, key)
         return { ...descriptor, configurable: key !== 'length' || !Array.isArray(target) }
       }
     })
-    proxies.set(cacheKey, proxy)
     proxyValues.set(proxy, () => atPath(getState(), path))
     return proxy
   }
