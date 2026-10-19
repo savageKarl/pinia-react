@@ -21,7 +21,9 @@ defineStore('invalid', {
   }
 })
 
-const observeAction: PiniaPlugin = ({ pinia, store }) => {
+const observeAction: PiniaPlugin = ({ pinia, store, onDispose }) => {
+  const cancel = onDispose?.(() => {})
+  expectType<(() => void) | undefined>(cancel)
   pinia.onMutation((event: MutationEvent) => {
     expectType<string | undefined>(event.meta.actionId)
     expectType<string | undefined>(event.meta.parentActionId)

@@ -99,13 +99,25 @@ describe('@pinia-react/devtools', () => {
     expect(connection.send).not.toHaveBeenCalled()
   })
 
-  test('handles RESET and IMPORT_STATE', () => {
+  test('handles RESET, JUMP_TO_ACTION, and IMPORT_STATE without echoing restores', () => {
     const { useStore } = setup()
     const { result } = renderHook(() => useStore())
 
     act(() => result.current.add(2))
+    connection.send.mockClear()
     act(() => subscriber?.({ type: 'DISPATCH', payload: { type: 'RESET' } }))
     expect(result.current.count).toBe(0)
+    expect(connection.send).not.toHaveBeenCalled()
+
+    act(() =>
+      subscriber?.({
+        type: 'DISPATCH',
+        payload: { type: 'JUMP_TO_ACTION' },
+        state: JSON.stringify({ count: 3 })
+      })
+    )
+    expect(result.current.count).toBe(3)
+    expect(connection.send).not.toHaveBeenCalled()
 
     act(() =>
       subscriber?.({
@@ -117,6 +129,7 @@ describe('@pinia-react/devtools', () => {
       })
     )
     expect(result.current.count).toBe(4)
+    expect(connection.send).not.toHaveBeenCalled()
   })
   test('sends each action commit without changing its name and preserves restore origins', () => {
     const pinia = createPinia().use(devtoolsPlugin())

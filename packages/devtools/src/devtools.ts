@@ -4,7 +4,8 @@ import type { DevtoolsPluginOptions } from './types'
 type DevToolsConnection = {
   init(state: unknown): void
   send(action: { type: string; payload?: unknown }, state: unknown): void
-  subscribe(listener: (message: any) => void): void
+  subscribe(listener: (message: any) => void): (() => void) | void
+  unsubscribe?(): void
 }
 
 type DevToolsExtension = {
@@ -56,15 +57,32 @@ export function devtoolsPlugin(pluginOptions: DevtoolsPluginOptions = {}): Pinia
       ? `${pluginOptions.name}: ${options.name ?? context.id}`
       : (options.name ?? context.id)
     const connection = extension.connect({ name, trace: options.trace })
+    let active = true
+    context.onDispose?.(() => {
+      active = false
+      connection.unsubscribe?.()
+    })
     connection.init(context.store.$state)
+    if (!active) return
 
-    context.pinia.onMutation((event) => {
-      if (event.storeId !== context.id || event.meta.origin === DEVTOOLS_ORIGIN) return
+    const stopMutation = context.pinia.onMutation((event) => {
+      if (
+        !active ||
+        event.store !== context.store ||
+        event.storeId !== context.id ||
+        event.meta.origin === DEVTOOLS_ORIGIN
+      )
+        return
       connection.send(actionFor(event), event.state)
     })
 
-    connection.subscribe((message) => {
-      if (message?.type !== 'DISPATCH') return
+    context.onDispose?.(() => {
+      active = false
+      stopMutation()
+    })
+
+    const stopMessages = connection.subscribe((message) => {
+      if (!active || context.pinia._s.get(context.id) !== context.store || message?.type !== 'DISPATCH') return
 
       const type = message.payload?.type
       if (type === 'COMMIT') {
@@ -81,5 +99,15 @@ export function devtoolsPlugin(pluginOptions: DevtoolsPluginOptions = {}): Pinia
       if (!state || typeof state !== 'object') return
       context.restoreState(state as typeof context.store.$state, { origin: DEVTOOLS_ORIGIN })
     })
+    if (typeof stopMessages === 'function') {
+      if (!active) {
+        stopMessages()
+        return
+      }
+      context.onDispose?.(() => {
+        active = false
+        stopMessages()
+      })
+    }
   }
 }

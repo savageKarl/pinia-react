@@ -1,4 +1,4 @@
-import { createPinia, defineStore, type MutationEvent, type PiniaPluginContext } from 'pinia-react'
+import { createPinia, defineStore, disposePinia, type MutationEvent, type PiniaPluginContext } from 'pinia-react'
 import { createPersistedState } from '../src'
 import { memoryStorage } from './helpers'
 
@@ -178,4 +178,80 @@ it('suppresses its own restore origin even when another plugin uses the controll
   context.restoreState({ count: 5 }, { origin: 'other-plugin' })
   expect(store.count).toBe(5)
   expect(storage.setItem).toHaveBeenCalledOnce()
+})
+
+it('releases persistence listeners without deleting storage, and rejects captured methods after disposal', () => {
+  const storage = memoryStorage({ closed: '{"count":7}' })
+  const errors = vi.fn()
+  const pinia = createPinia().use(createPersistedState({ storage, onHydrateError: errors, onPersistError: errors }))
+  const store = defineStore('closed', { state: () => ({ count: 0 }), persist: true }).getStore(pinia)
+  const hydrate = store.$hydrate!
+  const persist = store.$persist!
+  const scope = pinia._scopes.get('closed')!
+  store.$patch({ count: 8 })
+  const writes = storage.setItem.mock.calls.length
+  disposePinia(pinia)
+  expect(scope.mutationListeners.size).toBe(0)
+  expect(() => hydrate()).toThrow(/disposed/)
+  expect(() => persist()).toThrow(/disposed/)
+  expect(storage.setItem).toHaveBeenCalledTimes(writes)
+  expect(storage.values.get('closed')).toBe('{"count":8}')
+  expect(errors).not.toHaveBeenCalled()
+})
+
+it('rolls back failed installs without accumulating writers and preserves their original snapshot', () => {
+  const storage = memoryStorage()
+  const pinia = createPinia().use(createPersistedState({ storage }))
+  pinia._initialStores.retry = { count: 7 }
+  let fail = true
+  const captures: (() => void)[] = []
+  pinia.use(({ store }) => {
+    captures.push(store.$persist!)
+    if (fail) throw new Error('later plugin')
+  })
+  const definition = defineStore('retry', { state: () => ({ count: 0 }), persist: true })
+  for (let iteration = 0; iteration < 5; iteration++) {
+    expect(() => definition.getStore(pinia)).toThrow('later plugin')
+    expect(pinia._s.size + pinia._scopes.size).toBe(0)
+    expect(pinia._initialStores.retry).toEqual({ count: 7 })
+  }
+  fail = false
+  const store = definition.getStore(pinia)
+  for (const persist of captures.slice(0, -1)) expect(() => persist()).toThrow(/disposed/)
+  store.$patch({ count: 8 })
+  expect(storage.setItem).toHaveBeenCalledOnce()
+  disposePinia(pinia)
+})
+
+it('does not write after a serializer disposes its own instance or swallow that lifecycle failure', () => {
+  const storage = memoryStorage()
+  const errors = vi.fn()
+  const pinia = createPinia().use(createPersistedState({ storage, onPersistError: errors }))
+  const store = defineStore('serializer-close', {
+    state: () => ({ count: 0 }),
+    persist: {
+      serializer: {
+        deserialize: JSON.parse,
+        serialize: () => {
+          disposePinia(pinia)
+          return '{}'
+        }
+      }
+    }
+  }).getStore(pinia)
+  const persist = store.$persist!
+  expect(() => persist()).toThrow(/disposed/)
+  expect(storage.setItem).not.toHaveBeenCalled()
+  expect(errors).not.toHaveBeenCalled()
+})
+
+it('preserves the runtime behavior for a legacy core context without onDispose', () => {
+  const storage = memoryStorage()
+  const pinia = createPinia().use((context) => {
+    const { onDispose: _onDispose, ...legacy } = context
+    return createPersistedState({ storage })(legacy)
+  })
+  const store = defineStore('legacy-persist', { state: () => ({ count: 0 }), persist: true }).getStore(pinia)
+  store.$patch({ count: 1 })
+  expect(storage.setItem).toHaveBeenCalledWith('legacy-persist', '{"count":1}')
 })
