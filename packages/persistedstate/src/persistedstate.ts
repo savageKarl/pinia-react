@@ -27,6 +27,16 @@ export function createPersistencePlugin(
     ) as readonly PersistenceOptions[]
     const strategies = configurations.map((configuration) => ({ configuration, key: undefined as string | undefined }))
     let hydrating = false
+    let active = true
+    context.onDispose?.(() => {
+      active = false
+    })
+
+    function assertUsable() {
+      if (!active) throw new Error('[pinia-react/persistedstate] Cannot use a disposed Store.')
+      // A captured method must fail even before this plugin's cleanup callback has run.
+      void context.store.$id
+    }
 
     function report(error: unknown, strategy: PersistenceOptions, phase: 'hydrate' | 'persist') {
       try {
@@ -62,14 +72,17 @@ export function createPersistencePlugin(
     }
 
     function hydrate({ runHooks = true }: HydrateOptions = {}) {
+      assertUsable()
       // Nested calls share this round; do not resume writes before outer hooks finish.
       if (hydrating) return
       hydrating = true
       try {
         for (const strategy of strategies) {
+          assertUsable()
           const config = strategy.configuration
           try {
             if (runHooks) (config.beforeHydrate ?? options.beforeHydrate)?.(context)
+            assertUsable()
             const key = resolveKey(strategy)
             const storage = resolveStorage(config)
             if (storage) {
@@ -82,6 +95,7 @@ export function createPersistencePlugin(
             }
             if (runHooks) (config.afterHydrate ?? options.afterHydrate)?.(context)
           } catch (error) {
+            assertUsable()
             report(error, config, 'hydrate')
           }
         }
@@ -91,7 +105,9 @@ export function createPersistencePlugin(
     }
 
     function persist(state: unknown = context.store.$state) {
+      assertUsable()
       for (const strategy of strategies) {
+        assertUsable()
         const config = strategy.configuration
         try {
           const key = resolveKey(strategy)
@@ -100,8 +116,10 @@ export function createPersistencePlugin(
           const selected = filterState(state, config.pick, config.omit)
           const raw = (config.serializer ?? options.serializer ?? jsonSerializer).serialize(selected)
           if (typeof raw !== 'string') throw new TypeError('Serializer must return a string')
+          assertUsable()
           storage.setItem(key, raw)
         } catch (error) {
+          assertUsable()
           report(error, config, 'persist')
         }
       }
@@ -109,8 +127,12 @@ export function createPersistencePlugin(
 
     hydrate()
     if (strategies.length) {
-      context.store.$subscribe((state, _previous, event) => {
+      const stop = context.store.$subscribe((state, _previous, event) => {
         if (!hydrating && event?.meta.origin !== ORIGIN) persist(state)
+      })
+      context.onDispose?.(() => {
+        active = false
+        stop()
       })
     }
     return { $hydrate: hydrate, $persist: () => persist() }

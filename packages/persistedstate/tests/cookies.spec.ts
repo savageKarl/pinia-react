@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/suspicious/noDocumentCookie: Exercise synchronous browser Cookie persistence and browser/server divergence. */
-import { createPinia, defineStore } from 'pinia-react'
+import { createPinia, defineStore, disposePinia } from 'pinia-react'
 import { createCookiePersistedState, readCookieSnapshot } from '../src/next'
 
 beforeEach(() => {
@@ -219,4 +219,17 @@ it('rejects empty Cookie keys during restore and persistence', () => {
   expect(onHydrateError).toHaveBeenCalledOnce()
   store.$patch({ count: 1 })
   expect(onPersistError).toHaveBeenCalledOnce()
+})
+
+it('retains cookies and releases writers when the owning instance is disposed', () => {
+  const pinia = createPinia().use(createCookiePersistedState({ cookies: {} }))
+  const store = defineStore('cookie-lifetime', { state: () => ({ count: 1 }), persist: true }).getStore(pinia)
+  const persist = store.$persist!
+  const hydrate = store.$hydrate!
+  store.$persist?.()
+  const previous = document.cookie
+  disposePinia(pinia)
+  expect(() => persist()).toThrow(/disposed/)
+  expect(() => hydrate()).toThrow(/disposed/)
+  expect(document.cookie).toBe(previous)
 })

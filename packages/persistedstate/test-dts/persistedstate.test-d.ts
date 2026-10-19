@@ -20,6 +20,7 @@ const options: PluginOptions = {
   key: (key) => `app:${key}`,
   beforeHydrate(context) {
     expectType<PiniaPluginContext>(context)
+    expectType<(() => void) | undefined>(context.onDispose?.(() => {}))
   }
 }
 expectType<PiniaPlugin>(persistedState)
