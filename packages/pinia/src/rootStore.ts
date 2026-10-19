@@ -1,9 +1,15 @@
+import { assertActive } from './lifecycle'
 import type { Pinia } from './types'
 
 export let activePinia: Pinia | undefined
 
 export function setActivePinia(pinia: Pinia) {
+  assertActive(pinia)
   activePinia = pinia
+}
+
+export function clearActivePinia(pinia: Pinia): void {
+  if (activePinia === pinia) activePinia = undefined
 }
 
 export function getActivePinia(): Pinia {
@@ -13,5 +19,6 @@ export function getActivePinia(): Pinia {
         'const pinia = createPinia() or createPinia() first.\n'
     )
   }
+  assertActive(activePinia)
   return activePinia
 }

@@ -1,4 +1,5 @@
 import type { Draft, Patch } from 'immer'
+import type { StoreDebugCause } from './diagnostics'
 
 export type StateTree = Record<string, any>
 
@@ -25,6 +26,40 @@ export interface MutationEvent<S extends StateTree = StateTree> {
   patches: Patch[]
   meta: MutationMeta
 }
+
+/** A value-free description of one real committed Mutation. IDs are local to its Pinia. */
+export interface StoreDebugMutation {
+  readonly id: number
+  readonly storeId: string
+  readonly meta: Readonly<Omit<MutationMeta, 'args'>>
+  readonly patches: readonly { readonly op: Patch['op']; readonly path: readonly (string | number)[] }[]
+}
+
+export type StoreDebugReason =
+  | { readonly kind: 'state-path'; readonly path: readonly (string | number)[] }
+  | { readonly kind: 'all-state' }
+  | { readonly kind: 'getter-invalidated'; readonly getter: string }
+
+export type StoreDebugEvent =
+  | { readonly type: 'mutation'; readonly mutation: StoreDebugMutation }
+  | {
+      readonly type: 'dependencies'
+      readonly storeId: string
+      readonly label: string
+      readonly statePaths: readonly (readonly (string | number)[])[]
+      readonly getters: readonly string[]
+    }
+  | ({
+      readonly mutation: StoreDebugMutation
+      readonly via: readonly { readonly storeId: string; readonly getters: readonly string[] }[]
+    } & {
+      readonly type: 'notify'
+      readonly storeId: string
+      readonly label: string
+      readonly reason: StoreDebugReason
+    })
+
+export type StoreDebugListener = (event: StoreDebugEvent) => void
 
 export type MutationListener = (event: MutationEvent) => void
 
@@ -97,7 +132,15 @@ export interface DefineStoreOptions<S extends StateTree, G extends Record<string
 
 export type StoreScope = {
   currentState: StateTree
-  listeners: Set<(state: any, prev: any, patches: Patch[]) => void>
+  listeners: Set<
+    (
+      state: any,
+      prev: any,
+      patches: Patch[],
+      cause?: StoreDebugCause,
+      invalidatedGetters?: ReadonlyMap<string, StoreDebugCause | undefined>
+    ) => void
+  >
   mutationListeners: Set<MutationListener>
   getterResultCache: Map<string, any>
   getterDependencies: Map<string, Set<StatePath>>
@@ -135,6 +178,8 @@ export type PiniaPluginContext<
   pinia: Pinia
   /** A plugin-only, fully controlled state replacement operation. */
   restoreState: (state: S, options?: RestoreStateOptions) => void
+  /** Register synchronous Store cleanup. The returned function only cancels registration. */
+  onDispose?: (cleanup: () => void) => () => void
 }
 
 export interface StoreDefinition<
@@ -143,8 +188,8 @@ export interface StoreDefinition<
   G extends Record<string, any>,
   A extends Record<string, any>
 > {
-  useStore: () => Store<Id, S, G, A>
-  getStore: () => Store<Id, S, G, A>
+  useStore: (debugLabel?: string) => Store<Id, S, G, A>
+  getStore: (pinia?: Pinia) => Store<Id, S, G, A>
 }
 
 type NamedStoreDefinition<
@@ -155,9 +200,9 @@ type NamedStoreDefinition<
 > = string extends Id
   ? {}
   : {
-      [K in `use${Capitalize<Id>}Store`]: () => Store<Id, S, G, A>
+      [K in `use${Capitalize<Id>}Store`]: (debugLabel?: string) => Store<Id, S, G, A>
     } & {
-      [K in `get${Capitalize<Id>}Store`]: () => Store<Id, S, G, A>
+      [K in `get${Capitalize<Id>}Store`]: (pinia?: Pinia) => Store<Id, S, G, A>
     }
 
 export type StoreDefinitionWithNames<

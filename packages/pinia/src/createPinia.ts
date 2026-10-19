@@ -1,3 +1,4 @@
+import { assertActive, ownSubscription } from './lifecycle'
 import { setActivePinia } from './rootStore'
 import type { MutationListener, Pinia, StateTree, StoreGeneric } from './types'
 
@@ -17,6 +18,7 @@ export function createPiniaInstance(): Pinia {
 
   const pinia: Pinia = {
     use(plugin) {
+      assertActive(pinia)
       if (_s.size > 0) {
         console.warn(
           '[pinia-react] A plugin was registered after stores were created. ' +
@@ -27,8 +29,12 @@ export function createPiniaInstance(): Pinia {
       return this
     },
     onMutation(listener) {
-      _m.add(listener)
-      return () => _m.delete(listener)
+      assertActive(pinia)
+      const subscription: MutationListener = (event) => listener(event)
+      _m.add(subscription)
+      return ownSubscription(pinia, () => {
+        _m.delete(subscription)
+      })
     },
     _p,
     _s,

@@ -135,6 +135,77 @@ describe('PiniaProvider', () => {
     expect(second.getByText('9:second')).toBeInTheDocument()
   })
 
+  it('isolates getter caches, subscriptions, and plugin effects across Providers', () => {
+    const calculateDouble = vi.fn((state: { count: number }) => state.count * 2)
+    const { useStore, getStore } = defineStore('provider-isolation', {
+      state: () => ({ count: 0 }),
+      getters: { double: calculateDouble },
+      actions: {
+        increment() {
+          this.count++
+        }
+      }
+    })
+    const firstStoreMutation = vi.fn()
+    const firstPiniaMutation = vi.fn()
+    const secondStoreMutation = vi.fn()
+    const secondPiniaMutation = vi.fn()
+    const firstPlugin = vi.fn(({ pinia, store }) => {
+      store.$subscribe(firstStoreMutation)
+      pinia.onMutation(firstPiniaMutation)
+    })
+    const secondPlugin = vi.fn(({ pinia, store }) => {
+      store.$subscribe(secondStoreMutation)
+      pinia.onMutation(secondPiniaMutation)
+    })
+    const firstRender = vi.fn()
+    const secondRender = vi.fn()
+    function IsolatedCounter({ onRender }: { onRender: () => void }) {
+      const store = useStore()
+      onRender()
+      return (
+        <button onClick={() => store.increment()}>
+          {store.count}:{store.double}
+        </button>
+      )
+    }
+
+    const first = render(
+      <PiniaProvider plugins={[firstPlugin]} initialStores={{ 'provider-isolation': { count: 1 } }}>
+        <IsolatedCounter onRender={firstRender} />
+      </PiniaProvider>
+    )
+    const firstPinia = getActivePinia()
+    const second = render(
+      <PiniaProvider plugins={[secondPlugin]} initialStores={{ 'provider-isolation': { count: 9 } }}>
+        <IsolatedCounter onRender={secondRender} />
+      </PiniaProvider>
+    )
+    const secondPinia = getActivePinia()
+
+    expect(first.container.querySelector('button')).toHaveTextContent('1:2')
+    expect(second.container.querySelector('button')).toHaveTextContent('9:18')
+    expect(calculateDouble).toHaveBeenCalledTimes(2)
+    expect(firstPlugin).toHaveBeenCalledOnce()
+    expect(secondPlugin).toHaveBeenCalledOnce()
+    expect(firstPinia).not.toBe(secondPinia)
+    expect(getStore().count).toBe(9)
+
+    fireEvent.click(first.container.querySelector('button')!)
+
+    expect(first.container.querySelector('button')).toHaveTextContent('2:4')
+    expect(second.container.querySelector('button')).toHaveTextContent('9:18')
+    expect(firstRender).toHaveBeenCalledTimes(2)
+    expect(secondRender).toHaveBeenCalledOnce()
+    expect(calculateDouble).toHaveBeenCalledTimes(3)
+    expect(firstStoreMutation).toHaveBeenCalledOnce()
+    expect(firstPiniaMutation).toHaveBeenCalledOnce()
+    expect(secondStoreMutation).not.toHaveBeenCalled()
+    expect(secondPiniaMutation).not.toHaveBeenCalled()
+    expect(firstPinia.state['provider-isolation']).toEqual({ count: 2 })
+    expect(secondPinia.state['provider-isolation']).toEqual({ count: 9 })
+  })
+
   it('hydrates the same snapshot without warnings and keeps client mutations', async () => {
     const tree = (
       <PiniaProvider initialStores={{ counter: { count: 6, profile: { name: 'ssr' } } }}>
