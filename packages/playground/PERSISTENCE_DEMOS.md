@@ -1,6 +1,6 @@
 # Playground guide
 
-Two small applications teach one idea at a time. Each has three scenes with a live preview on the left and the relevant source excerpt on the right. Start with the counter, then shared state, then persistence. State inspection and manual persistence controls are collapsed by default.
+Two small applications teach one idea at a time. The React app has four scenes with a live preview and the relevant source excerpt: a basic Store, shared state, persistence, and a Zustand comparison. The Next.js app covers server snapshots, shared Store lifetime across routes, and Cookie persistence. State inspection and manual persistence controls are collapsed by default.
 
 Run from the repository root with Node.js 22 and pnpm 10:
 
@@ -16,8 +16,9 @@ pnpm playground-nextjs
 | State basics | Increment and reset | An action updates state and the doubled getter together |
 | Shared state | Increment either component, then switch scenes | Both components use one store; switching views keeps its state |
 | Local storage | Change name, theme, and note, then reload | Only name and theme survive; notes remain in memory |
+| Comparison lab | Change count, profile, cart, and async status in either column | Contrasts automatic path tracking with explicit Zustand selectors and Store organization; counters are illustrative, not a benchmark |
 
-`src/index.tsx` registers persistence and DevTools once on one Provider inside StrictMode. `src/preferences.ts` contains the only persisted store, using `pick: ['name', 'theme']` and the key `pinia-playground:preferences`. The active scene is stored in the URL hash, so reloading the persistence example keeps that example open. Manual save, restore, and reset remain available in the collapsed controls. Reset writes defaults; it does not delete saved data. Nothing clears browser storage on mount, and the old demo keys are left untouched.
+`src/index.tsx` registers persistence and DevTools once on one Provider inside StrictMode. `src/preferences.ts` contains the only persisted store, using `pick: ['name', 'theme']` and the key `pinia-playground:preferences`; it is also the only React playground Store enabled in Redux DevTools. The active scene is stored in the URL hash, so reloading the persistence example keeps that example open. Manual save, restore, and reset remain available in the collapsed controls. Reset writes defaults; it does not delete saved data. Nothing clears browser storage on mount, and the old demo keys are left untouched.
 
 ## Next.js App Router
 

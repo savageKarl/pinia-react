@@ -1,16 +1,21 @@
 import { devtoolsPlugin } from '@pinia-react/devtools'
 import persistedState from '@pinia-react/persistedstate'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { PiniaProvider } from 'pinia-react'
+import { createPinia, disposePinia, PiniaProvider } from 'pinia-react'
 import { StrictMode } from 'react'
 import { App } from '../src/App'
 import { preferenceKey } from '../src/preferences'
 
+const owners: ReturnType<typeof createPinia>[] = []
 function playground() {
+  const pinia = createPinia()
+    .use(persistedState)
+    .use(devtoolsPlugin({ name: 'React playground' }))
+  owners.push(pinia)
   return render(
     <StrictMode>
-      <PiniaProvider plugins={[persistedState, devtoolsPlugin({ name: 'React playground' })]}>
-        <App />
+      <PiniaProvider pinia={pinia}>
+        <App pinia={pinia} />
       </PiniaProvider>
     </StrictMode>
   )
@@ -21,7 +26,10 @@ beforeEach(() => {
   window.history.replaceState(null, '', '/')
 })
 
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => {
+  for (const pinia of owners.splice(0)) disposePinia(pinia)
+  vi.restoreAllMocks()
+})
 
 it('starts with one focused example and updates actions, getters and reset together', () => {
   playground()
@@ -122,4 +130,16 @@ it('restores DevTools state through the real plugin without sending it back', as
   } finally {
     Reflect.deleteProperty(window, '__REDUX_DEVTOOLS_EXTENSION__')
   }
+})
+
+it('keeps the same diagnostic definitions when switching examples', async () => {
+  vi.spyOn(console, 'debug').mockImplementation(() => {})
+  playground()
+  fireEvent.click(screen.getByRole('button', { name: /Tracking diagnostics/ }))
+  await screen.findByRole('status')
+  fireEvent.click(screen.getByRole('button', { name: 'Increment count' }))
+  expect(screen.getByRole('status')).toHaveTextContent('total 2')
+  fireEvent.click(screen.getByRole('button', { name: /State basics/ }))
+  fireEvent.click(screen.getByRole('button', { name: /Tracking diagnostics/ }))
+  expect(await screen.findByRole('status')).toHaveTextContent('total 2')
 })

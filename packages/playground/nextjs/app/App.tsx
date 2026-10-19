@@ -2,17 +2,19 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { CheckoutPanel } from '../../shared/Checkout'
 import { CounterDemo, SharedCounterDemo } from '../../shared/counter'
-import { type ExampleId, Playground } from '../../shared/playground'
+import { Example, type ExampleId, Playground } from '../../shared/playground'
 import { CookiePreferences } from './preferences'
 
 const examples = [
   { id: 'counter', label: 'Server state', href: '/' },
   { id: 'sharing', label: 'Across pages', href: '/sharing' },
-  { id: 'persistence', label: 'Cookie storage', href: '/preferences' }
+  { id: 'persistence', label: 'Cookie storage', href: '/preferences' },
+  { id: 'checkout', label: 'Business checkout', href: '/checkout' }
 ] as const
 
-export function App({ example = 'counter', details = false }: { example?: ExampleId; details?: boolean }) {
+export function App({ example = 'counter', details = false }: { example?: ExampleId | 'checkout'; details?: boolean }) {
   const router = useRouter()
   return (
     <Playground
@@ -42,6 +44,20 @@ export function App({ example = 'counter', details = false }: { example?: Exampl
         </SharedCounterDemo>
       )}
       {example === 'persistence' && <CookiePreferences />}
+      {example === 'checkout' && (
+        <Example
+          number='04'
+          title='Request-safe checkout.'
+          description='The same four Stores and form as the SPA. Shipping is restored from the request cookie; addresses, inventory and orders are never persisted. Refresh server data without replacing the client cart.'
+          file='app/layout.tsx → shared/Checkout.tsx'
+          code={'request cookie → Provider snapshot → cart total → checkout'}
+        >
+          <CheckoutPanel />
+          <button type='button' className='button-secondary' onClick={() => router.refresh()}>
+            Refresh checkout server data
+          </button>
+        </Example>
+      )}
     </Playground>
   )
 }

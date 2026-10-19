@@ -42,7 +42,7 @@ export function Playground({
             Shared state. <span>Made simple.</span>
           </h1>
           <p className='intro-description'>
-            Three small examples, from a single update to{' '}
+            A few small examples, from a single update to{' '}
             {framework === 'React' ? 'preferences that survive a refresh' : 'state shared between server and browser'}.
           </p>
         </div>
