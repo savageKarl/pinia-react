@@ -1,5 +1,32 @@
 # Changelog
 
+## 3.1.0
+
+### Minor Changes
+
+- 8dc42f9: Add opt-in development tracking diagnostics through onStoreDebug(pinia, listener) and optional string labels on generic and named Store Hooks. Value-free, immutable descriptions distinguish real source Mutations, committed dependency reads and matched onStoreChange requests; they do not equate notifications with React commits. Observer callbacks run after cache invalidation and business dispatch, retain per-Mutation provenance during nested writes, and cannot interrupt business dispatch when they throw. Production builds disable diagnostics and remove their allocation paths. Existing no-argument Hooks and Store names remain compatible.
+- 8dc42f9: Allow generic and named getStore accessors to receive an explicit Pinia instance, and allow PiniaProvider to receive an existing instance. Existing parameterless Store access and the extensible PiniaProviderProps interface remain supported. Use an explicit instance or a business closure for cross-Store Actions across await; this does not introduce automatic asynchronous context propagation.
+
+  Store ownership does not reserve a new business property name. Existing State, Getter, Action and plugin fields named $pinia remain valid.
+
+- 8dc42f9: Add synchronous, irreversible and idempotent disposePinia(pinia), plus optional plugin-context onDispose(cleanup) registration. The core supplies this hook without requiring existing custom plugin hosts or hand-written contexts to add a new field. Provider unmount does not automatically dispose an instance; its final owner must unmount dependent trees before disposing it.
+
+  Disposal releases owned subscriptions, Getter dependencies, diagnostics and registered plugin resources, including resources belonging to replaced Store definitions. Captured operations reject use after explicit disposal. Duplicate-ID replacement keeps captured Store references usable without allowing their writes to overwrite the replacement's root snapshot.
+
+  Failed plugin initialization releases installation-owned resources and restores its initial snapshot for retry without removing successful nested Stores or unrelated application listeners. Cleanup continues after errors and reports an AggregateError; already completed business side effects are not rolled back.
+
+### Patch Changes
+
+- 8dc42f9: Keep React dependency tracking accurate for arrays, string-keyed state and concurrent renders.
+- 8dc42f9: Reject own symbol keys in plain-object and array business state, including nested and non-enumerable keys, instead of letting them bypass readonly protection or the normal mutation lifecycle. Initialization and state updates reject unsupported keys before the affected transition commits; string-keyed state and inherited array iteration remain supported.
+
+  Keep StatePath as string[] and MutationEvent patches compatible with Immer Patch[]. Block reflective writes through nested readonly state, preserve ordinary plugin metadata descriptors, and retain the documented warning-only boundary for opaque special values.
+
+  Applications that used symbol-keyed business state must rename those keys. Symbol keys are not silently removed or converted into strings.
+
+- 8dc42f9: Fix stale cross-Store Getters in multi-hop chains and diamond-shaped dependencies. Invalidate all affected caches and update Store snapshots before notifying readers, including reentrant reads, without emitting derived business Mutations. Preserve the original Mutation source and forwarding path in development diagnostics.
+- 8dc42f9: Reduce avoidable allocation and value-normalization work in the Store mutation pipeline.
+
 ## 3.0.0
 
 ### Major Changes

@@ -1,6 +1,6 @@
 {
   "name": "@pinia-react/devtools",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Redux DevTools Extension plugin for pinia-react",
   "type": "module",
   "main": "./dist/index.cjs",

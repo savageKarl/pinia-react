@@ -1,5 +1,13 @@
 # @pinia-react/persistedstate
 
+## 1.0.1
+
+### Patch Changes
+
+- 8dc42f9: Release persistence subscriptions on instance disposal, failed Store initialization and duplicate-ID replacement with lifecycle-enabled core. Reject captured hydrate and persist operations after their Store is closed, including Cookie persistence, without deleting stored data or performing a final write. Lifecycle failures remain visible rather than being reported as ordinary storage failures.
+
+  Older core contexts without onDispose retain their previous behavior and do not gain the complete disposal guarantee.
+
 ## 1.0.0
 
 ### Minor Changes
