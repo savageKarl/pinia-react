@@ -22,7 +22,7 @@ export default function Providers({
     })
   )
   return (
-    <PiniaProvider plugins={[persistence]} initialStores={initialStores}>
+    <PiniaProvider initialStores={initialStores} plugins={[persistence]}>
       {children}
     </PiniaProvider>
   )

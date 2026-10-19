@@ -8,16 +8,18 @@
   "scripts": {
     "dev": "vite",
     "test": "vitest run --config ../../../vitest.config.ts",
-    "test-dts": "tsc -p ./tsconfig.check.json"
+    "test-dts": "tsc -p ./tsconfig.check.json",
+    "benchmark": "vitest bench --run --config ../../../vitest.config.ts tests/comparison.bench.ts && vitest run --config ../../../vitest.config.ts tests/tracking.spec.tsx"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@vitejs/plugin-react": "^5.0.0",
-    "vite": "^7.1.2",
+    "@pinia-react/devtools": "workspace:*",
     "@pinia-react/persistedstate": "workspace:*",
+    "@vitejs/plugin-react": "^5.0.0",
     "pinia-react": "workspace:*",
-    "@pinia-react/devtools": "workspace:*"
+    "vite": "^7.1.2",
+    "zustand": "^5.0.15"
   }
 }
