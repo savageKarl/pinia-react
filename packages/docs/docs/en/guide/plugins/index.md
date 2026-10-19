@@ -159,3 +159,21 @@ pinia.use(({ restoreState }) => ({
 store.$subscribe((state, prevState, event) => {}) receives the same committed event as pinia.onMutation. Its optional metadata includes type, origin, action, actionId and parentActionId. Use origin to avoid sending a restore back to its source. Getter-only invalidation does not create a business mutation.
 
 For a Provider, pass plugins through its initialization-only `plugins` prop, before stores are created. Persistence remains an independent plugin policy; see the [persisted state guide](./persistedstate). The core does not access storage or choose whether local data overrides initialStores. Basic server safety is not a complete Next.js hydration adapter.
+
+## Plugin resource cleanup
+
+The current core supplies `context.onDispose(cleanup)`. It is optional in the context type so older hosts and hand-written fixtures can omit it. A plugin that needs external resources must either handle their lifetime itself or check for this capability before acquiring them:
+
+~~~ts
+pinia.use(({ onDispose }) => {
+  if (!onDispose) return
+  const timer = setInterval(() => console.log('heartbeat'), 1000)
+  onDispose(() => clearInterval(timer))
+})
+~~~
+
+Each registration belongs to this Store installation, not a shared plugin factory. Callbacks run synchronously in reverse registration order on instance disposal or installation failure. The returned function cancels registration without executing cleanup. Register resources immediately after acquisition. Async cleanup is not awaited; release resources without reading or mutating the closed Store.
+
+Core subscriptions created synchronously during installation inherit its scope. Later subscriptions and external timers, listeners, or connections need explicit cleanup. Resources acquired by a factory before Store installation remain the factory owner's responsibility. Older hosts without `onDispose` do not gain disposal guarantees just by upgrading a plugin.
+
+Cleanup continues after failures and reports an `AggregateError` afterward. If initialization and cleanup both fail, the original initialization error is retained first and as `cause`. Completed business side effects are not rolled back. Provider unmount does not dispose the instance; the final owner must unmount consumers and call `disposePinia(pinia)`.

@@ -73,3 +73,7 @@ export const reminder = defineStore('reminder', {
 保留熟悉的默认插件与工厂、显式启用与 `auto`、key、同步存储与序列化、路径筛选、多策略、钩子和手动 API。React 快照、受控恢复 origin、整轮自动回写隔离、校验及可选方法类型，则遵循 Pinia-React 自身契约，不照搬 Vue 内部机制。
 
 Vue setup Store 限制、Vue HMR 和 Nuxt 模块并非这里提供的功能。异步存储、跨标签同步、TTL、迁移和加密不在范围内；Cookie 仅由显式 Next.js 入口提供。已支持的能力请看[进阶用法](./advanced)；受支持的 App Router Cookie 路径单独见 [Next.js](./nextjs)。
+
+## 最终销毁
+
+配合提供生命周期协议的 core，实例销毁、Store 初始化失败会移除持久化订阅。此前捕获的 `$persist` 和 `$hydrate` 函数随后会抛错，不再通过过期 Store 写入。保留 localStorage 和 Cookie；销毁不会进行最后一次写入或删除已有数据。先卸载依赖组件，再由所有者调用 `disposePinia`。缺少 `onDispose` 的旧 core context 保留原行为，不获得完整销毁保证。生命周期异常不会被转换成存储错误回调。

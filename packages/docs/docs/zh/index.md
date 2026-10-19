@@ -4,9 +4,9 @@ pageType: home
 hero:
   name: Pinia-React
   text: |
-      直观的
-      React 状态管理
-  tagline:  "类型安全、可扩展且模块化的设计"
+      结构化
+      React 状态
+  tagline:  "通过 State、Getter 和 Action 构建类型安全 Store"
   actions:
     - theme: brand
       text: 介绍
@@ -18,8 +18,8 @@ hero:
     src: /rspress-icon.png
     alt: Logo
 features:
-  - title: 自动渲染优化
-    details: 追踪组件渲染时读取的状态字段，Store 更新时通知依赖相关字段的组件。
+  - title: 自动路径追踪
+    details: 追踪已提交渲染读取的状态路径，以过滤无关的 Store 订阅更新；它不会阻止所有 React 渲染。
     icon: 🔄
   - title: '支持 React 并发渲染'
     details: 通过 `useSyncExternalStore` 接入 React 的并发渲染。

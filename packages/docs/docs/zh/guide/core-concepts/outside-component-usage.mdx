@@ -1,49 +1,88 @@
-# 在组件外使用 Store
+# 组件外使用 Store
 
-Pinia-React 的 Store 不仅可以在 React 组件内部使用，也可以在外部使用。对于 `auth` Store，自动生成的 `useAuthStore()` 是专门为组件设计的 Hook，而其他场景可以使用自动生成的 `getAuthStore()` 函数。原有的 `useStore()` 和 `getStore()` 方法仍然保留。
+定义 Store 时，同时导出普通访问函数和 React Hook：
 
-## `getAuthStore` 函数
-
-当你通过 `defineStore('auth', ...)` 定义一个 Store 时，它会根据 Store ID 自动生成 `useAuthStore`（Hook）和 `getAuthStore`（普通函数）。
-
-推荐的模式是从 Store 定义文件中同时导出这两个自动生成的函数。原有的 `useStore` 和 `getStore` 方法也仍然可以使用。
-
-```tsx title="src/stores/auth-store.ts"
+~~~ts
 import { defineStore } from 'pinia-react'
 
-const { useAuthStore, getAuthStore } = defineStore('auth', {
-  state: () => ({
-    isAuthenticated: false,
-    // ...
-  }),
+export const { useAuthStore, getAuthStore } = defineStore('auth', {
+  state: () => ({ isAuthenticated: false }),
   actions: {
-    logout() {
-      this.isAuthenticated = false
-    }
-  }
+    logout() { this.isAuthenticated = false },
+  },
 })
+~~~
 
-```
+单根浏览器应用先调用 `createPinia()` 初始化，再使用 `getAuthStore()`。后者是普通函数，不是 Hook：
 
-## 使用示例
+~~~ts
+import { getAuthStore } from './stores/auth'
 
-现在，你可以在任何 JavaScript 模块中导入 `getAuthStore`，比如在服务文件、API 客户端或另一个 Store 的 Action 中。
-
-下面是一个在工具函数中调用 Store Action 的例子：
-
-```tsx title="src/auth-service.ts"
-import { getAuthStore } from './stores/auth-store'
-
-export function performLogout() {
-  // 通过调用 getAuthStore() 获取 Store 实例
-  const authStore = getAuthStore()
-
-  // 现在你可以访问 state、getter 或 action 了
-  if (authStore.isAuthenticated) {
-    authStore.logout()
-    console.log('用户已登出。')
-  }
+export function logout() {
+  getAuthStore().logout()
 }
-```
+~~~
 
-在单根客户端应用中，getAuthStore() 使用当前 active Pinia。根 PiniaProvider 会在浏览器设置该实例，请在 Provider 初始化后调用，例如放在客户端事件处理函数中。暂不支持多个独立 Provider 与无参数 getAuthStore() 同时正确选择实例。Server Component 应获取普通 JSON 并通过 initialStores 传入 Provider，而不是直接访问客户端 Store。
+## 多实例和组件外服务
+
+在应用边界保留 Pinia 实例，显式传给组件外代码：
+
+~~~tsx
+import { createPinia, PiniaProvider } from 'pinia-react'
+import type { Pinia } from 'pinia-react'
+import { getAuthStore } from './stores/auth'
+
+function logout(pinia: Pinia) {
+  getAuthStore(pinia).logout()
+}
+
+// 浏览器启动处：为这个挂载的应用保留此实例。
+const pinia = createPinia()
+const application = (
+  <PiniaProvider pinia={pinia}>
+    <button onClick={() => logout(pinia)}>退出登录</button>
+  </PiniaProvider>
+)
+~~~
+
+具名访问函数和通用 `getStore(pinia?)` 都接受显式实例，不会切换 active Pinia。向 Provider 传入现有实例时，由调用者提前初始化，不能再组合 Provider 的 `plugins` 或 `initialStores`。该实例在此 Provider 的生命周期内保持不变。
+
+| 访问方式 | 使用的实例 |
+| --- | --- |
+| 组件 Hook | 最近的 Provider，其次是 active Pinia |
+| 有实例参数的普通访问函数 | 显式传入的实例 |
+| 同步 Getter 内的无参访问函数 | 当前求值 Getter 所属实例 |
+| 其他位置的无参访问函数，包括 Action | active Pinia，不读取 React Context |
+
+Hook 的可选字符串是[诊断标签](./getters)，不是实例参数。多个 Provider 可以共存，但组件外服务不能依赖“最后变成 active 的实例”。显式传入实例，或在应用服务中用闭包保留它。跨 Store Action 在 `await` 前后都需要同一显式依赖，见 [Action](./actions)。
+
+## 请求和 SSR
+
+普通请求服务为每个请求保留一个本地实例，所有访问函数都传入它，异步操作之后也一样。`createPinia()` 为兼容既有用法仍会设置全局 active Pinia；不能把它当作请求容器，也不要在模块顶层保存请求 Store。
+
+Next.js App Router 的 Server Component 获取普通 JSON，通过 `initialStores` 传给 Client Provider，不调用客户端 Store API。只传快照，不传 Pinia 实例、Store、Proxy 或 Action。Provider 服务端渲染使用隔离实例，不设置全局 active Pinia，详见 [Next.js](../integrations/nextjs)。
+
+## 测试和最终清理
+
+每个测试使用独立实例，创建 Store 前注册插件，见[真实 Store 测试](./testing)。
+
+确认实例永远不再使用时，应用的最终持有者可以销毁它：
+
+~~~ts
+import { createPinia, disposePinia } from 'pinia-react'
+
+const pinia = createPinia()
+try {
+  getAuthStore(pinia).logout()
+} finally {
+  disposePinia(pinia)
+}
+~~~
+
+先卸载依赖组件。`disposePinia(pinia)` 同步、不可逆且幂等，会关闭 Store，清理订阅和 Getter 依赖，执行已注册的插件清理。若销毁的是 active 实例会清除 active Pinia，其他 active 实例不受影响。不会删除存储或 Cookie。
+
+销毁后，旧 Store 引用、捕获的方法以及 Action 在 `await` 后的读写都会失败。网络请求和任意 Promise 不会自动取消，需要资源持有者安排取消。已取出的普通值和快照无法撤销。某个清理回调抛错不会阻止剩余清理，完成后会报告 `AggregateError`。
+
+Provider 卸载不会自动销毁。不要在 Effect cleanup 中执行不可逆销毁：Strict Mode 会用同一实例重放 Effect。在应用边界保留显式实例，卸载组件树后，再销毁这个确切的实例。没有公开的单 Store 销毁方法。
+
+插件安装失败时，会释放本次安装注册的资源，并恢复其初始快照以便重试；不会撤销已完成的存储写入、回调或对其他 Store 的修改。见[插件清理](../plugins/index)。

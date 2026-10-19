@@ -110,3 +110,9 @@ defineStore('users', {
 ## 当前限制
 
 该插件不提供 Vue Devtools 中的 Pinia 检查器、组件到 Store 的检查能力或 Pinia 专属时间线，也不会在应用内添加调试界面。所有状态检查和历史控制均由 Redux DevTools Extension 提供。
+
+## 连接生命周期
+
+配合提供生命周期协议的 core，`disposePinia(owner)`、Store 初始化失败会释放 Store 的 Mutation 监听、`subscribe` 返回的可选取消函数，以及连接自身可选的 `unsubscribe`。这些是独立资源；迟到消息会被忽略。插件绝不调用扩展级 `disconnect`，不影响其他 Store 或实例的连接。仅 Provider 卸载不会关闭连接，最终所有者需在卸载后显式销毁。
+
+缺少 `onDispose` 的旧 core context 保留原先运行行为；仅升级插件不能获得完整资源销毁保证。

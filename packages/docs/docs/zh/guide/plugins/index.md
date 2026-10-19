@@ -159,3 +159,21 @@ pinia.use(({ restoreState }) => ({
 store.$subscribe((state, prevState, event) => {}) 与 pinia.onMutation 接收同一个已提交事件。可选元数据包含 type、origin、action、actionId 和 parentActionId。可通过 origin 避免将恢复操作发回来源。仅 Getter 失效不会创建业务 Mutation。
 
 Provider 通过仅初始化生效的 `plugins` 属性，在 Store 创建前注册插件。持久化仍属于独立插件策略，参阅[状态持久化指南](./persistedstate)。核心不访问存储、不决定本地数据是否覆盖 initialStores。基础服务端安全不等于完整 Next.js hydration 适配。
+
+## 插件资源清理
+
+当前 core 提供 `context.onDispose(cleanup)`。context 类型将它保留为可选能力，旧宿主和手写测试对象可以不提供。需要外部资源的插件，应自行管理生命周期，或先检查此能力再取得资源：
+
+~~~ts
+pinia.use(({ onDispose }) => {
+  if (!onDispose) return
+  const timer = setInterval(() => console.log('heartbeat'), 1000)
+  onDispose(() => clearInterval(timer))
+})
+~~~
+
+每次登记属于当前 Store 安装，不属于共享插件工厂。实例销毁或安装失败时，同步逆序执行回调。返回函数只取消登记，不执行 cleanup。取得资源后立即登记；异步 cleanup 不会被等待，清理时直接释放资源，不再读写已关闭的 Store。
+
+同步安装期间创建的 core 订阅自动归属当前安装；之后建立的订阅以及外部计时器、监听和连接需要显式清理。Store 安装前由工厂取得的资源仍由工厂持有者负责。缺少 `onDispose` 的旧宿主不会仅因升级插件就获得销毁保证。
+
+某个清理回调失败时，其余回调仍会执行，最后报告 `AggregateError`。初始化和清理都失败时，原初始化异常保留为第一项和 `cause`。已完成的业务副作用不会回滚。Provider 卸载不销毁实例，最终持有者应先卸载依赖组件，再调用 `disposePinia(pinia)`。

@@ -2,9 +2,9 @@
 
 State holds data shared by your application. Components subscribe to state read during rendering and update when that data changes.
 
-Public state is read-only, including state returned to components and by `getStore()`. Change it through Actions, `$patch()`, or `$reset()`; Getters only read and compute values. Immer turns writes inside Actions and `$patch()` into immutable state updates.
+Plain-object and array state returned to components and by `getStore()` is read-only. Opaque special values have the warning-only boundary described below. Change it through Actions, `$patch()`, or `$reset()`; Getters only read and compute values. Immer turns writes inside Actions and `$patch()` into immutable state updates.
 
-Define a `state()` factory that returns the initial state. Prefer JSON-compatible strings, finite numbers, booleans, `null`, plain objects, and arrays. Reactive mutation and transfer are not guaranteed for `Date`, `Map`, `Set`, class instances, functions, Promises, or browser objects.
+Define a `state()` factory that returns the initial state. Prefer JSON-compatible strings, finite numbers, booleans, `null`, plain objects, and arrays. Special values have the limitations described below.
 
 ```tsx
 import { defineStore } from 'pinia-react'
@@ -20,6 +20,22 @@ export const { useCounterStore, getCounterStore } = defineStore('counter', {
   },
 })
 ```
+
+## State value and key boundaries
+
+| Value or key | Runtime boundary |
+| --- | --- |
+| Plain objects and arrays | Nested ordinary property writes and array mutators inside Actions or function patches use the same immutable commit lifecycle. Public reads, including nested `$state` reads, are read-only. |
+| Dynamic string keys and keys containing dots | Tracked as individual property keys, not dot-separated paths. Add or remove fields through Actions or `$patch()`; use an appropriate dictionary or optional-field type. |
+| Own symbol keys in business state | Unsupported, including nested and non-enumerable keys. Initialization, Actions, patches or plugin restoration that introduce these keys throw before that state transition commits; fields are not silently discarded. |
+| Array indices, `length` and inherited built-ins | Normal array reads and iteration are supported, including `Symbol.iterator`. Inherited built-ins are not user-defined symbol state fields. Custom string or symbol properties on arrays are outside the supported mutation model. |
+| `Date`, `Map`, `Set`, class instances, functions, Promises and browser objects | Remain opaque rather than recursively proxied state. First exposure emits a runtime warning, deduplicated by actual object identity. Native reads remain available for compatibility, but in-place mutation is **not supported** and can bypass read-only guards, patches, Getter invalidation and notifications. Use plain representations or replace the entire value through an Action or `$patch()`. |
+
+The opaque-value warning applies to Store, `$state`, Getter and Action reads, function-patch access and replacement normalization; it does not turn special values into read-only or reactive objects. Reading the same instance again, including on a later render, does not repeat the warning. In a function patch, mutating a `Date` can still change its internal value without an Immer patch or notification; Map/Set draft access is rejected by the default Immer configuration. Plugin restoration preserves its origin and normal commit notifications, but does not add special-object support.
+
+Use string keys for business fields. `StatePath` is `string[]`, and Mutation patches use Immer `Patch[]`. Rejecting business symbol keys does not disable built-in array iteration. A key such as `'user.name'` is a single key, while `['user', 'name']` in a mutation path means two nested fields.
+
+Do not mutate state through references retained from `state()`, patch payloads or plugin snapshots. The supported mutation boundary is the Store Action proxy or a synchronous `$patch()` draft, not external aliases. Native methods being callable does not imply reactive support for an object's internal slots.
 
 ## TypeScript
 
@@ -173,3 +189,9 @@ store.$subscribe((state, prevState, event) => {
 ```
 
 Getter-only invalidation from another store updates dependent components without calling state subscriptions. The mutation event belongs to the store whose state actually changed.
+
+### Value-free development observations
+
+For automatic-tracking diagnosis, use [`onStoreDebug`](./getters#development-diagnostics) rather than logging a complete `MutationEvent`. It reports a diagnostic ID per real commit, the original Store, metadata without Action arguments and patch operations/paths without values. Action writes before and after `await`, nested Actions, patches, resets and plugin restores keep the existing Mutation lifecycle and origin; failed Actions do not undo already committed writes.
+
+`notify` means an actual matched Store update request, not every subscriber callback and not a React commit. Cross-Store Getter invalidation retains the source Mutation description and does not create a target business Mutation. Diagnostic callbacks run after cache invalidation and business dispatch; they cannot be used as middleware to alter that commit. Read the Getter page for committed dependencies, privacy, production disabling and current one-hop cross-Store limits.

@@ -4,9 +4,9 @@ pageType: home
 hero:
   name: Pinia-React
   text: |
-      Intuitive
-      React State Management
-  tagline:  "Type-safe, Extensible, and Modular Design"
+      Structured
+      React State
+  tagline:  "Type-safe Stores with State, Getters, and Actions"
   actions:
     - theme: brand
       text: Introduction
@@ -18,8 +18,8 @@ hero:
     src: /rspress-icon.png
     alt: Logo
 features:
-  - title: Automatic Render Optimization
-    details: Tracks state read during rendering so Store updates notify components that depend on the changed fields.
+  - title: Automatic Path Tracking
+    details: Tracks state paths read during committed renders to filter unrelated Store subscription updates; it does not prevent every React render.
     icon: 🔄
   - title: 'React Concurrent Rendering Support'
     details: Connects to React concurrent rendering through `useSyncExternalStore`.

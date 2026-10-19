@@ -8,5 +8,20 @@
     "type": "file",
     "name": "migration",
     "label": "Action 迁移说明"
+  },
+  {
+    "type": "file",
+    "name": "compare-zustand",
+    "label": "Pinia-React 与 Zustand"
+  },
+  {
+    "type": "file",
+    "name": "checkout-report",
+    "label": "结算示例"
+  },
+  {
+    "type": "file",
+    "name": "choosing",
+    "label": "选型与迁入"
   }
 ]

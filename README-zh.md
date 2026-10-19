@@ -1,14 +1,21 @@
 # pinia-react
 
-`pinia-react` 是一个轻量级且类型安全的 React 状态管理库。它将 Vue Pinia 的优雅开发体验带到了 React 生态中，结合了 **Immer** 的不可变数据流和 **React Hooks** 的原生性能。
+`pinia-react` 是面向 React 应用的结构化、类型安全 Store。它将共享业务状态组织为 State、Getter 和 Action，再通过 `useSyncExternalStore` 接入 React。
+
+当应用需要明确的 Store 边界、命名的派生值、Action 生命周期，以及能同时服务于组件和普通 TypeScript 代码的插件时，可以选择 Pinia-React。
 
 核心特性：
-- **响应式**: 基于 `useSyncExternalStore` 构建，完美支持 React 18+ 的并发渲染 (Concurrent Rendering)。
-- **高效**: 细粒度的依赖自动追踪。组件只有在真正使用的属性发生变化时才会重新渲染，无需手动编写 selector。
-- **直观**: 在 Actions 中使用可变 (Mutable) 语法直接修改状态 (底层由 Immer 处理)，代码更简洁。
-- **开发工具**: 可通过独立的 `@pinia-react/devtools` 插件接入 Redux DevTools Extension。
+- **结构化**: State、Getter 和 Action 为共享业务逻辑提供明确位置。
+- **兼容 React**: 基于 `useSyncExternalStore`，遵循 React 18 和 19 的渲染语义。
+- **自动依赖追踪**: 追踪渲染期间读取的状态路径，因此无关字段的提交不会通知该组件的 Store 订阅。
+- **Immer Action**: 使用可变语法编写 Action，得到不可变的状态转换。
+- **可选集成**: 持久化和 Redux DevTools 通过独立包提供，并明确浏览器与 SSR 边界。
+
+自动追踪过滤 Store 订阅更新。父组件更新、props、Strict Mode 或并发渲染仍可能让 React 重新渲染组件。
 
 ## 安装
+
+需要 React 18 或 19。
 
 ```bash
 pnpm add pinia-react
@@ -55,7 +62,7 @@ export const { useCounterStore, getCounterStore } = defineStore('counter', {
 
   // Getters: 计算属性，具备缓存机制
   getters: {
-    doubleCount() {
+    doubleCount(): number {
       // `this` 指向当前 store 实例
       return this.count * 2
     }
@@ -64,7 +71,7 @@ export const { useCounterStore, getCounterStore } = defineStore('counter', {
   // Actions: 修改状态的方法
   actions: {
     increment() {
-      // `this` 是一个 Immer draft，你可以直接修改它！
+      // Action 中可以直接赋值，由 Immer 提交不可变更新。
       this.count++
     },
     async renameAsync(newName: string) {
@@ -88,19 +95,19 @@ export function Counter() {
 
   return (
     <div>
-      {/* 只有当 count 变化时，组件才会重渲染 */}
+      {/* Store 订阅会追踪本次渲染读取的路径。 */}
       <p>Count: {store.count}</p>
-      
-      {/* 只有当 doubleCount 变化时，组件才会重渲染 */}
+
+      {/* Getter 根据当前 count 派生。 */}
       <p>Double: {store.doubleCount}</p>
 
       {/* 调用 Actions 修改状态 */}
       <button onClick={() => store.increment()}>+1</button>
-      
-      {/* 
+
+      {/*
         ⚠️ 注意：在组件中，Store 的属性是【只读】的。
-        store.count++ // ❌ 这会触发警告并失败
-        请始终使用 actions 或 $patch 来修改状态。
+        store.count++ // 组件中是只读的。
+        请使用 Action 或 $patch 修改状态。
       */}
     </div>
   )
@@ -111,18 +118,18 @@ export function Counter() {
 
 ### `$patch`
 
-允许你使用回调函数一次性更新多个状态属性。回调函数接收一个 Immer draft。
-
-> **注意**：与 Vue 的 Pinia 不同，本实现仅支持**回调函数**形式，不支持传入对象。
+允许你一次性更新多个状态属性。需要 Immer draft 时使用回调函数；替换顶层字段时可以传入浅层对象。
 
 ```ts
-const store = useCounterStore()
+const store = getCounterStore()
 
 store.$patch((state) => {
   // 在这里可以进行批量修改
   state.count += 10
   state.name = 'Patched'
 })
+
+store.$patch({ count: 10, name: 'Patched' })
 ```
 
 ### `$reset`
@@ -143,7 +150,7 @@ useEffect(() => {
   const unsubscribe = store.$subscribe((newState, oldState) => {
     console.log('状态已更新:', newState)
   })
-  
+
   // 组件卸载时取消订阅
   return unsubscribe
 }, [store])
@@ -162,6 +169,8 @@ function logCount() {
   console.log(store.count)
 }
 ```
+
+使用多个实例时，通过 `getCounterStore(pinia)` 显式指定 Pinia；React 组件使用最近的 `PiniaProvider`。接入方式参阅[组件外使用指南](https://savagekarl.github.io/pinia-react/zh/guide/core-concepts/outside-component-usage)。
 
 ## TypeScript 支持
 
@@ -208,15 +217,50 @@ export const { useCounterStore } = defineStore('counter', {
 
 安装 `@pinia-react/persistedstate`，在 Store 创建前注册默认插件，并通过 `persist: true` 开启。`createPersistedState` 支持全局默认值、`auto`、自定义 key、同步存储、嵌套 `pick` / `omit`、钩子和有序多策略。浏览器 React SPA 的 `PiniaProvider` 支持仅初始化生效的 `plugins={[persistedState]}`。
 
+```bash
+pnpm add @pinia-react/persistedstate
+```
+
 ```ts
+import { createPinia, defineStore } from 'pinia-react'
 import persistedState from '@pinia-react/persistedstate'
+
 createPinia().use(persistedState)
+
+export const { usePreferencesStore } = defineStore('preferences', {
+  state: () => ({ theme: 'light' }),
+  persist: true
+})
 ```
 
 手动 `$hydrate?.()` / `$persist?.()` 只存在于启用的 Store。服务端 App Router 偏好可使用独立的 `@pinia-react/persistedstate/next` Cookie 适配器与白名单请求快照；默认 localStorage 插件仍面向 SPA，接入、API 与安全限制参阅[持久化指南](https://savagekarl.github.io/pinia-react/zh/guide/plugins/persistedstate)。
 
+## 运行示例
+
+仓库中可运行的示例如下：
+
+| 示例 | 运行位置 |
+| --- | --- |
+| 基础 Store、Getter、Action 和异步更新 | React Playground `#counter` 与 `#comparison`；[Action 指南](https://savagekarl.github.io/pinia-react/zh/guide/core-concepts/actions) |
+| 共享状态 | React Playground `#sharing` |
+| SSR 快照与 hydration | Next.js Playground；[Next.js 指南](https://savagekarl.github.io/pinia-react/zh/guide/integrations/nextjs) |
+| 浏览器持久化 | React Playground `#persistence`；[持久化指南](https://savagekarl.github.io/pinia-react/zh/guide/plugins/persistedstate) |
+| DevTools | 在 React Playground 中使用 Redux DevTools Extension；[DevTools 指南](https://savagekarl.github.io/pinia-react/zh/guide/plugins/devtools) |
+| Zustand 对比 | React Playground `#comparison`；[对比指南](https://savagekarl.github.io/pinia-react/zh/guide/integrations/compare-zustand) |
+
+对比页中的渲染计数仅用于观察，不是速度评分。
+
+```bash
+pnpm install
+pnpm playground-react
+pnpm playground-nextjs
+```
+
+开发命令和贡献流程参阅 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+
 ## 文档
-要了解更多关于 Pinia-React 的信息，请查阅其[文档](https://savagekarl.github.io/pinia-react)。
+
+要了解更多关于 Pinia-React 的信息，请查阅其[文档](https://savagekarl.github.io/pinia-react/zh/)。
 
 ## License
 

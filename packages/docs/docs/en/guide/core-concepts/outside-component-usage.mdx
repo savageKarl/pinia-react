@@ -1,49 +1,88 @@
-# Using a Store Outside of a Component
+# Stores outside components
 
-Pinia-React stores can be used inside and outside of React components. While the generated `useAuthStore()` hook is designed for components, you can use the generated `getAuthStore()` function for all other scenarios. The generic `useStore()` and `getStore()` helpers remain available for backwards compatibility.
+Export the plain accessor alongside the React Hook:
 
-## The `getAuthStore` function
-
-When you define a store with `defineStore('auth', ...)`, it generates `useAuthStore` (the hook) and `getAuthStore` (a plain function) from the store ID.
-
-The recommended pattern is to export both generated functions from your store definition file. The generic `useStore` and `getStore` helpers are also available.
-
-```tsx title="src/stores/auth-store.ts"
+~~~ts
 import { defineStore } from 'pinia-react'
 
-const { useAuthStore, getAuthStore } = defineStore('auth', {
-  state: () => ({
-    isAuthenticated: false,
-    // ...
-  }),
+export const { useAuthStore, getAuthStore } = defineStore('auth', {
+  state: () => ({ isAuthenticated: false }),
   actions: {
-    logout() {
-      this.isAuthenticated = false
-    }
-  }
+    logout() { this.isAuthenticated = false },
+  },
 })
+~~~
 
-```
+In a single-root browser application, initialize with `createPinia()` before calling `getAuthStore()`. The accessor is an ordinary function, not a Hook:
 
-## Example Usage
+~~~ts
+import { getAuthStore } from './stores/auth'
 
-Now, you can import `getAuthStore` in any JavaScript module, like a service file, an API client, or another store's action.
-
-Here is an example of calling a store's action from a utility function:
-
-```tsx title="src/auth-service.ts"
-import { getAuthStore } from './stores/auth-store'
-
-export function performLogout() {
-  // Get the store instance by calling getAuthStore()
-  const authStore = getAuthStore()
-
-  // You can now access state, getters, or actions
-  if (authStore.isAuthenticated) {
-    authStore.logout()
-    console.log('User has been logged out.')
-  }
+export function logout() {
+  getAuthStore().logout()
 }
-```
+~~~
 
-In a single-root client application, getAuthStore() uses the current active Pinia. A root PiniaProvider sets that instance in the browser; call getAuthStore() after the Provider has initialized, for example from a client event handler. Multiple independent Providers with parameterless getAuthStore() are not supported. Server Components should fetch plain JSON and pass initialStores to the Provider instead of accessing client stores.
+## Multiple instances and services
+
+Keep the Pinia instance at the application boundary and pass it explicitly to external code:
+
+~~~tsx
+import { createPinia, PiniaProvider } from 'pinia-react'
+import type { Pinia } from 'pinia-react'
+import { getAuthStore } from './stores/auth'
+
+function logout(pinia: Pinia) {
+  getAuthStore(pinia).logout()
+}
+
+// Browser bootstrap: retain this instance for this mounted application.
+const pinia = createPinia()
+const application = (
+  <PiniaProvider pinia={pinia}>
+    <button onClick={() => logout(pinia)}>Log out</button>
+  </PiniaProvider>
+)
+~~~
+
+Both the named accessor and generic `getStore(pinia?)` accept an explicit instance without changing active Pinia. A supplied Provider instance must be initialized by its owner; do not combine it with Provider `plugins` or `initialStores`. It remains the instance for that Provider lifetime.
+
+| Access | Instance used |
+| --- | --- |
+| Component Hook | Nearest Provider, then active Pinia |
+| Plain accessor with an argument | That explicit instance |
+| Parameterless accessor inside a synchronous Getter | The evaluating Getter's instance |
+| Parameterless accessor elsewhere, including Actions | Active Pinia, not React Context |
+
+An optional Hook string is a [diagnostic label](./getters), not an instance argument. Multiple Providers can coexist, but external services cannot depend on whichever instance became active last. Pass the instance or close over it in application-level services. Cross-Store Actions need the same explicit dependency before and after `await`; see [Actions](./actions).
+
+## Requests and SSR
+
+For ordinary request services, retain one local instance per request and pass it to every accessor, including after async work. `createPinia()` still sets global active Pinia for compatibility; never use that global as a request container or keep request Stores at module scope.
+
+For Next.js App Router, Server Components fetch plain JSON and pass `initialStores` to a Client Provider. They do not call client Store APIs. Transfer snapshots, not Pinia instances, Stores, Proxies, or Actions. Server Provider rendering isolates its instance without setting global active Pinia. See [Next.js](../integrations/nextjs).
+
+## Testing and final cleanup
+
+Use a fresh instance per test and register plugins before creating Stores. See [testing real Stores](./testing).
+
+The final application owner may release an instance when it will never be reused:
+
+~~~ts
+import { createPinia, disposePinia } from 'pinia-react'
+
+const pinia = createPinia()
+try {
+  getAuthStore(pinia).logout()
+} finally {
+  disposePinia(pinia)
+}
+~~~
+
+Unmount dependent components first. `disposePinia(pinia)` is synchronous, irreversible, and idempotent. It closes Stores, clears subscriptions and Getter dependencies, and runs registered plugin cleanup. If this instance is active, active Pinia is cleared; a different active instance is unchanged. Storage and Cookies are not deleted.
+
+Old Store references, captured methods, and Action reads/writes after `await` fail after disposal. Network requests and arbitrary Promises are not cancelled automatically; the resource owner must arrange cancellation. Extracted plain values and snapshots cannot be revoked. Cleanup continues after a callback fails and reports an `AggregateError` afterward.
+
+Provider unmount does not dispose automatically. Do not put irreversible disposal in an Effect cleanup: Strict Mode replays Effects with the same instance. Retain the explicit instance at the application boundary, unmount the tree, then dispose that exact instance. There is no public per-Store disposal method.
+
+A plugin installation failure releases resources registered by that installation and restores its initial snapshot for retry. It does not undo completed storage writes, callbacks, or changes to other Stores. See [plugin cleanup](../plugins/index).

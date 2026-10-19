@@ -73,3 +73,7 @@ Other tabs' writes do not automatically update an already-created Store. There i
 The familiar default plugin/factory, opt-in/`auto`, keys, synchronous storage/serializers, path selection, strategies, hooks and manual APIs are retained. React snapshots, controlled restore origins, whole-round automatic-write isolation, validation and optional method types follow Pinia-React's own contracts instead of copying Vue internals.
 
 Vue setup-Store caveats, Vue HMR and Nuxt modules do not apply as features here. Async storage, cross-tab synchronization, TTL, migrations and encryption are not included. Cookies are available only through the explicit Next.js entry. See [advanced usage](./advanced) for behavior that **is** supported; the supported App Router Cookie path is documented separately in [Next.js](./nextjs).
+
+## Final disposal
+
+With lifecycle-enabled core, instance disposal and failed Store initialization remove persistence subscriptions. Captured `$persist` and `$hydrate` functions then throw, rather than writing through an obsolete Store. Local storage and cookies are retained; disposal does not perform a final write or delete saved data. Unmount dependent components before the owner calls `disposePinia`. Older core contexts without `onDispose` keep the prior behavior, not the complete disposal guarantee. Lifecycle errors are not converted into storage error callbacks.

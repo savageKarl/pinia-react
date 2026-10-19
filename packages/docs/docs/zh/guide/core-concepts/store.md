@@ -2,7 +2,7 @@
 
 Store 使用 `defineStore()` 进行定义。它的第一个参数是一个唯一的 ID，Pinia 使用它来标识这个 Store。
 
-在同一个 Pinia 实例内，Store ID 必须唯一。重复定义同一个 ID 会在开发时告警，并且新的定义会替换掉之前的 Store。
+同一个 Pinia 实例内的 Store ID 应唯一。重复定义会在开发时告警，请为不同 Store 使用不同 ID。
 
 ```tsx
 import { defineStore } from 'pinia-react'
@@ -54,6 +54,6 @@ export function App() {
 }
 ```
 
-## Provider 实例解析
+## Provider 与组件外访问
 
-上面的解构式辅助函数继续作为主要 API。组件中的 useCounterStore() 优先读取 PiniaProvider Context，再回退到 activePinia。getCounterStore() 是普通函数，除 Getter 求值期间外读取当前 active 实例。Next.js 推荐使用一个根 Provider，并仅在 Client Component 调用 Hook，详见 [Next.js 集成指南](../integrations/nextjs)。
+组件 Hook 优先使用最近的 `PiniaProvider`，其次是 active Pinia。普通访问函数不读取 React Context，多实例服务使用 `getCounterStore(pinia)`。实例生命周期见[组件外使用](./outside-component-usage)，请求快照见 [Next.js](../integrations/nextjs)。简单的单根客户端接入不需要 Provider。

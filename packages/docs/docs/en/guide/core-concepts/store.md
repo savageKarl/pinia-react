@@ -2,7 +2,7 @@
 
 A Store is defined using `defineStore()`. Its first parameter is a unique ID that Pinia uses to identify the store.
 
-Store IDs must be unique within a Pinia instance. Defining the same ID twice warns in development, and the newer definition replaces the previous store.
+Store IDs must be unique within a Pinia instance. Duplicate definitions warn in development; use a distinct ID for each Store.
 
 ```tsx
 import { defineStore } from 'pinia-react'
@@ -54,6 +54,6 @@ export function App() {
 }
 ```
 
-## Provider resolution
+## Provider and external access
 
-The destructured helpers above remain the main API. A component's useCounterStore() resolves its PiniaProvider context first, then activePinia. getCounterStore() is a plain function and uses the active instance outside getter evaluation. For Next.js, use one root Provider and call hooks from Client Components. See the [Next.js guide](../integrations/nextjs).
+Component Hooks use the nearest `PiniaProvider`, then active Pinia. Plain accessors do not read React Context; pass `getCounterStore(pinia)` in multi-instance services. See [Stores outside components](./outside-component-usage) for instance lifetime and [Next.js](../integrations/nextjs) for request snapshots. The simple single-root setup does not need a Provider.

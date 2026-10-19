@@ -1,14 +1,21 @@
 # pinia-react
 
-`pinia-react` is a lightweight, type-safe state management library for React. It combines the developer experience of Pinia (Vue) with the power of **Immer** and **React Hooks**.
+`pinia-react` is a structured, type-safe Store for React applications. It organizes shared business state into State, Getters, and Actions, then connects that Store to React through `useSyncExternalStore`.
+
+Choose Pinia-React when your application benefits from explicit Store boundaries, named derived values, action lifecycles, and plugins that work consistently from components and ordinary TypeScript code.
 
 Key features:
-- **Reactive**: Built on `useSyncExternalStore` for concurrent rendering support.
-- **Efficient**: Fine-grained dependency tracking. Components only re-render when used properties change.
-- **Intuitive**: Write actions with mutable syntax (thanks to Immer) but get immutable state updates.
-- **DevTools**: Optional Redux DevTools integration through the separate `@pinia-react/devtools` plugin.
+- **Structured**: State, Getters, and Actions give shared business logic a predictable home.
+- **React-compatible**: Built on `useSyncExternalStore` for React 18 and 19 rendering semantics.
+- **Automatic dependency tracking**: Store reads during render are tracked by path, so unrelated committed fields do not notify that component's Store subscription.
+- **Immer actions**: Write Action updates with mutable syntax and receive immutable state transitions.
+- **Optional integrations**: Persistence and Redux DevTools are separate packages with documented browser and SSR boundaries.
+
+Automatic tracking filters Store subscription updates. Parent updates, props, Strict Mode, or concurrent work can still cause React to render a component.
 
 ## Installation
+
+Requires React 18 or 19.
 
 ```bash
 pnpm add pinia-react
@@ -55,7 +62,7 @@ export const { useCounterStore, getCounterStore } = defineStore('counter', {
 
   // Getters: Computed values
   getters: {
-    doubleCount() {
+    doubleCount(): number {
       // `this` refers to the store instance
       return this.count * 2
     }
@@ -64,7 +71,7 @@ export const { useCounterStore, getCounterStore } = defineStore('counter', {
   // Actions: Methods to modify state
   actions: {
     increment() {
-      // `this` is an Immer draft, so you can mutate it directly!
+      // Action writes use Immer to commit immutable updates.
       this.count++
     },
     async renameAsync(newName: string) {
@@ -88,18 +95,18 @@ export function Counter() {
 
   return (
     <div>
-      {/* Re-renders ONLY when count changes */}
+      {/* The Store subscription tracks the paths read during this render. */}
       <p>Count: {store.count}</p>
-      
-      {/* Re-renders ONLY when doubleCount changes */}
+
+      {/* Getter value derived from the current count. */}
       <p>Double: {store.doubleCount}</p>
 
       {/* Trigger actions */}
       <button onClick={() => store.increment()}>+1</button>
-      
-      {/* ⚠️ Store properties are Read-Only in components. 
-          store.count++ // This will warn and fail. 
-          Use actions or $patch instead. 
+
+      {/* ⚠️ Store properties are Read-Only in components.
+          store.count++ // This is read-only in components.
+          Use an Action or $patch instead.
       */}
     </div>
   )
@@ -110,17 +117,17 @@ export function Counter() {
 
 ### `$patch`
 
-Allows you to update multiple state properties at once using a callback function. The callback receives an Immer draft.
-
-> **Note**: Unlike Vue's Pinia, this implementation only accepts a callback function, not an object.
+Allows you to update multiple state properties at once. Use a callback for Immer draft updates or a shallow object for top-level replacements.
 
 ```ts
-const store = useCounterStore()
+const store = getCounterStore()
 
 store.$patch((state) => {
   state.count += 10
   state.name = 'Patched'
 })
+
+store.$patch({ count: 10, name: 'Patched' })
 ```
 
 ### `$reset`
@@ -157,6 +164,8 @@ function logCount() {
   console.log(store.count)
 }
 ```
+
+With multiple instances, pass the intended Pinia to `getCounterStore(pinia)`; React components use the nearest `PiniaProvider`. See [usage outside components](https://savagekarl.github.io/pinia-react/guide/core-concepts/outside-component-usage) for setup.
 
 ## TypeScript
 
@@ -203,12 +212,46 @@ The plugin reports actions, `$patch()` calls, and `$reset()` calls. Redux DevToo
 
 Install `@pinia-react/persistedstate` and register its default plugin before stores are created. Enable a store with `persist: true`, or configure global defaults, `auto`, custom keys, synchronous storage, nested `pick` / `omit`, hooks and ordered strategies through `createPersistedState`. In a browser React SPA, `PiniaProvider` accepts initialization-only `plugins={[persistedState]}`.
 
+```bash
+pnpm add @pinia-react/persistedstate
+```
+
 ```ts
+import { createPinia, defineStore } from 'pinia-react'
 import persistedState from '@pinia-react/persistedstate'
+
 createPinia().use(persistedState)
+
+export const { usePreferencesStore } = defineStore('preferences', {
+  state: () => ({ theme: 'light' }),
+  persist: true
+})
 ```
 
 Manual `$hydrate?.()` / `$persist?.()` methods are present only on enabled stores. For server-rendered App Router preferences, use the separate `@pinia-react/persistedstate/next` Cookie adapter with an allowlisted request snapshot; the default localStorage plugin remains SPA-only. See the [persisted state guide](https://savagekarl.github.io/pinia-react/guide/plugins/persistedstate) for setup, API and security limits.
+
+## Examples
+
+The repository includes these runnable examples:
+
+| Example | Where to find it |
+| --- | --- |
+| Basic Store, Getter, Action, and async updates | React Playground `#counter` and `#comparison`; [Actions guide](https://savagekarl.github.io/pinia-react/guide/core-concepts/actions) |
+| Shared state | React Playground `#sharing` |
+| SSR snapshots and hydration | Next.js Playground; [Next.js guide](https://savagekarl.github.io/pinia-react/guide/integrations/nextjs) |
+| Browser persistence | React Playground `#persistence`; [persistence guide](https://savagekarl.github.io/pinia-react/guide/plugins/persistedstate) |
+| DevTools | Redux DevTools Extension with the React Playground; [DevTools guide](https://savagekarl.github.io/pinia-react/guide/plugins/devtools) |
+| Zustand comparison | React Playground `#comparison`; [comparison guide](https://savagekarl.github.io/pinia-react/guide/integrations/compare-zustand) |
+
+Comparison render counts are illustrative, not a speed score.
+
+```bash
+pnpm install
+pnpm playground-react
+pnpm playground-nextjs
+```
+
+For development commands and contribution guidelines, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Documentation
 

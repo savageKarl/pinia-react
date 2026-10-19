@@ -42,7 +42,7 @@ initialStores 是以 defineStore 的精确 ID 为键的容器。传入的每个 
 
 Provider 在其生命周期内持有同一个 Pinia 实例。普通属性更新、router.refresh() 和同一布局下的客户端导航都不会重新应用快照或覆盖客户端修改。卸载并重新挂载 Provider 会创建新实例。$reset 恢复 state 工厂默认值，而不是服务端快照。
 
-Hook 优先读取 Provider Context，然后回退到 activePinia。浏览器中的根级 Provider 同时设置 activePinia，因此客户端事件处理函数和非 Hook 代码仍能调用 getCounterStore()。暂不支持多个独立 Provider 与无参数 getCounterStore() 同时正确选择实例，推荐每个应用只有一个根 Provider。
+Hook 优先使用最近的 Provider Context，其次是 active Pinia。浏览器 Provider 也设置 active Pinia，以兼容单根应用的无参访问函数。普通访问函数不读取 Context。多个客户端根并存时，在各自应用边界保留显式实例，传给服务或通过业务服务闭包保留；`await` 前后使用同一实例，不要把全局 active Pinia 当作请求容器。见[多实例访问](../core-concepts/outside-component-usage)。
 
 ## 服务端与客户端边界
 
