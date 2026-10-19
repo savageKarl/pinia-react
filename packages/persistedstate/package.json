@@ -1,6 +1,6 @@
 {
   "name": "@pinia-react/persistedstate",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Synchronous persisted state plugin for pinia-react",
   "type": "module",
   "main": "./dist/index.cjs",
