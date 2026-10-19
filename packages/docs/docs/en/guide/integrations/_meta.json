@@ -8,5 +8,20 @@
     "type": "file",
     "name": "migration",
     "label": "Action migration"
+  },
+  {
+    "type": "file",
+    "name": "compare-zustand",
+    "label": "Pinia-React vs Zustand"
+  },
+  {
+    "type": "file",
+    "name": "checkout-report",
+    "label": "Checkout example"
+  },
+  {
+    "type": "file",
+    "name": "choosing",
+    "label": "Choosing and migration"
   }
 ]

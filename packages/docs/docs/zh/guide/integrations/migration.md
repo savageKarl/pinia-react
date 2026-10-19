@@ -15,4 +15,10 @@
 
 插件和 DevTools 会接收每次真实提交。可以通过可选的 actionId 和 parentActionId 关联事件，不要依赖其字符串格式。Action 内的 patch 事件类型仍是 patch。仅 Getter 依赖失效不会触发状态订阅。
 
-正式支持的响应式状态模型为 JSON 对象、数组和基本值。Date、Map、Set 应转换为 JSON 数据，不要依赖透明修改语义。快照、根 Provider 生命周期和客户端 getStore 的边界见 [Next.js App Router](./nextjs)。
+受支持的响应式模型为普通对象和数组。特殊对象保留原生读取兼容，但内部修改不被追踪；通过 Action/patch 替换整个值，或使用普通数据。SSR 快照必须可安全序列化为 JSON。快照、根 Provider 生命周期和客户端 getStore 的边界见 [Next.js App Router](./nextjs)。
+
+## 显式实例与清理
+
+单根客户端仍可使用原有无参访问函数。多个实例并存时，在应用边界保留 Pinia，服务中在 `await` 前后都使用 `getStore(pinia)`。`PiniaProvider pinia={pinia}` 复用现有实例，不要再同时传入 Provider 插件或快照。普通访问函数不读取 React Context，Action 也不自动传播异步实例上下文。
+
+当前 core 为插件提供可选的 `context.onDispose`，旧宿主和手写 context 可以不提供。取得资源前检查该能力，或另行保留清理责任。应用最终持有者先卸载组件，再调用 `disposePinia(pinia)`。销毁不可逆、不删除持久化数据，也不会在 Provider 卸载时自动执行。见[实例生命周期](../core-concepts/outside-component-usage)和[插件清理](../plugins/index)。

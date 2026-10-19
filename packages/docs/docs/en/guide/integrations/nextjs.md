@@ -42,7 +42,7 @@ initialStores is a container keyed by the exact ID passed to defineStore. Each i
 
 The Provider retains one Pinia instance throughout its lifetime. Ordinary prop updates, router.refresh(), and client navigation under the same layout do not reapply snapshots or overwrite client changes. Unmounting and remounting the Provider creates a new instance. $reset restores factory defaults rather than the server snapshot.
 
-Hooks prefer their Provider context, then fall back to activePinia. In the browser the root Provider also sets activePinia so getCounterStore() remains available to client event handlers and non-hook code. Independent Providers with parameterless getCounterStore() are not supported; use one root Provider for an application.
+Hooks prefer the nearest Provider Context, then active Pinia. A browser Provider also sets active Pinia for single-root parameterless accessors. Plain accessors do not read Context. For multiple client roots, keep each explicit instance at its application boundary and pass it to services, or close over it in business services. Use that same instance before and after `await`; never use global active Pinia as a request container. See [multiple instances](../core-concepts/outside-component-usage).
 
 ## Server and client boundaries
 

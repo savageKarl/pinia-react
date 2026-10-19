@@ -23,5 +23,10 @@
     "type": "file",
     "name": "outside-component-usage",
     "label": "组件外使用 Store"
+  },
+  {
+    "type": "file",
+    "name": "testing",
+    "label": "测试"
   }
 ]

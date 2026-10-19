@@ -110,3 +110,9 @@ State changes initiated by DevTools are not sent back as new mutations, which pr
 ## Current Limitations
 
 The plugin does not provide Vue Devtools features such as a Pinia inspector, component-to-store inspection, or a Pinia-specific timeline. It also does not add in-app UI. All inspection and state-history controls live in the Redux DevTools Extension.
+
+## Connection lifetime
+
+With lifecycle-enabled core, `disposePinia(owner)` and failed Store initialization release the Store's Mutation listener, the unsubscribe function returned by `subscribe` when present, and the connection's own `unsubscribe` when present. These are separate resources. Late messages are ignored. The plugin never calls extension-wide `disconnect`, so other Stores and instances keep their connections. Provider unmount alone does not close connections; the final owner must dispose explicitly after unmount.
+
+Older core contexts without `onDispose` retain the previous runtime behavior; they do not gain complete resource disposal from upgrading this plugin alone.

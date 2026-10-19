@@ -72,6 +72,9 @@ export const { useCounterStore, getCounterStore } = defineStore('counter', {
   state: () => {
     return { count: 0 }
   },
+  getters: {
+    double: state => state.count * 2,
+  },
   actions: {
     increment() {
       this.count++
@@ -94,7 +97,7 @@ export function App() {
 
   return (
     <div>
-      <p>当前计数: {counter.count}</p>
+      <p>当前计数: {counter.count}；两倍: {counter.double}</p>
       <button onClick={() => counter.increment()}>增加</button>
     </div>
   )
@@ -106,3 +109,5 @@ export function App() {
 JSX 项目可使用相同的 Store 和组件代码，分别保存为 `.js` 和 `.jsx` 文件。
 
 继续阅读 [State](../core-concepts/state)、[Getter](../core-concepts/getters) 和 [Action](../core-concepts/actions)，了解类型推导、衍生数据和异步修改。
+
+独立挂载树、请求与最终卸载请参阅[实例归属与销毁](../core-concepts/outside-component-usage.mdx)。`disposePinia` 是显式且不可逆的所有者操作，不是 Effect cleanup；Provider 卸载不会自动销毁。

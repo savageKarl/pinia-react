@@ -23,5 +23,10 @@
     "type": "file",
     "name": "outside-component-usage",
     "label": "Stores outside of components"
+  },
+  {
+    "type": "file",
+    "name": "testing",
+    "label": "Testing"
   }
 ]

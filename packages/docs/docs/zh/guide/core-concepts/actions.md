@@ -94,26 +94,34 @@ Action 抛错或 Promise 拒绝时，已提交的修改会保留。请用 try/ca
 
 同一 Action 的事件共享 `meta.actionId`。嵌套 Action 有自己的 ID，并通过 `meta.parentActionId` 关联父 Action。Action 内的 `$patch()` 和 `$reset()` 保留自身事件类型，同时继承 Action 元数据。
 
-## 访问其他 Store 的 Action
+## 调用其他 Store
 
-如果需要使用另一个 Store 的 Action 或 State，只需在 Action 内部获取那个 Store 的实例即可。
+单根客户端应用中，Action 可以在初始化后调用无参访问函数。该函数使用 active Pinia，不会自动使用 Action 所属实例；多个实例可能交错执行时，它不是请求安全的模式。
 
-```tsx
-import { getAuthStore } from './auth-store';
+多实例业务把实例作为显式依赖，每次查找都传入它：
 
-export const { useSettingsStore } = defineStore('settings', {
-  state: () => ({
-    preferences: null,
-  }),
+~~~ts
+import { defineStore } from 'pinia-react'
+import type { Pinia } from 'pinia-react'
+
+const { getProgressStore } = defineStore('progress', {
+  state: () => ({ completed: 0 }),
+  actions: { step() { this.completed++ } },
+})
+
+export const { getJobStore } = defineStore('job', {
+  state: () => ({}),
   actions: {
-    async fetchUserPreferences() {
-      const auth = getAuthStore();
-      if (auth.isAuthenticated) {
-        this.preferences = await fetchPreferences();
-      } else {
-        throw new Error('用户必须先登录');
-      }
+    async run(pinia: Pinia, task: Promise<void>) {
+      getProgressStore(pinia).step()
+      await task
+      getProgressStore(pinia).step()
     },
   },
-});
-```
+})
+
+// 在应用边界保留 Pinia，两处使用同一个实例。
+// getJobStore(pinia).run(pinia, task)
+~~~
+
+也可以在应用服务中用闭包保留实例。这里没有自动异步上下文传播，也不会临时切换 active 实例。同步跨 Store Action 嵌套保留既有元数据行为，但 `await` 后的调用不会自动获得异步父关系。同 Store 的 `this.inner()` 在 `await` 后仍保留父 Action 元数据。

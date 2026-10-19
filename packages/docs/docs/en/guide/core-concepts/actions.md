@@ -94,26 +94,34 @@ If an Action throws or rejects, already committed changes remain. Handle cleanup
 
 Events from one Action share `meta.actionId`. Nested Actions receive their own ID and link to their parent through `meta.parentActionId`. Calls to `$patch()` and `$reset()` inside an Action keep their own event types and inherit Action metadata.
 
-## Accessing Actions from Other Stores
+## Calling another Store
 
-To use another store's actions or state, simply get its instance within an action.
+In a single-root client application, an Action can call a parameterless accessor after initialization. That accessor uses active Pinia, not the Action's instance. It is not a request-safe pattern when multiple instances can interleave.
 
-```tsx
-import { getAuthStore } from './auth-store';
+For multi-instance work, accept the instance as an explicit business dependency and pass it to every lookup:
 
-export const { useSettingsStore } = defineStore('settings', {
-  state: () => ({
-    preferences: null,
-  }),
+~~~ts
+import { defineStore } from 'pinia-react'
+import type { Pinia } from 'pinia-react'
+
+const { getProgressStore } = defineStore('progress', {
+  state: () => ({ completed: 0 }),
+  actions: { step() { this.completed++ } },
+})
+
+export const { getJobStore } = defineStore('job', {
+  state: () => ({}),
   actions: {
-    async fetchUserPreferences() {
-      const auth = getAuthStore();
-      if (auth.isAuthenticated) {
-        this.preferences = await fetchPreferences();
-      } else {
-        throw new Error('User must be authenticated');
-      }
+    async run(pinia: Pinia, task: Promise<void>) {
+      getProgressStore(pinia).step()
+      await task
+      getProgressStore(pinia).step()
     },
   },
-});
-```
+})
+
+// Keep this Pinia at the application boundary; use the same instance on both sides.
+// getJobStore(pinia).run(pinia, task)
+~~~
+
+Alternatively, close over the instance in an application-level service. There is no automatic async context propagation or temporary active-instance switching. Synchronous cross-Store Action nesting retains its existing metadata behavior, but calls after `await` do not gain an async parent link. Same-Store `this.inner()` calls retain their parent Action metadata after `await`.

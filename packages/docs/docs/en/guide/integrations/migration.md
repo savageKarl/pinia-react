@@ -15,4 +15,10 @@ Use $patch(fn) to make several synchronous writes atomic, or $patch(object) for 
 
 Plugins and DevTools receive every real commit. Use optional actionId and parentActionId to correlate action events; do not rely on their string format. A patch inside an action still has type patch. Getter-only dependency invalidations do not call state subscriptions.
 
-State uses JSON objects, arrays and primitive values as the supported reactive model. Represent Date, Map and Set as JSON data rather than relying on transparent mutation. See [Next.js App Router](./nextjs) for snapshots, root Provider lifetime and client-only getStore usage.
+Plain objects and arrays are the supported reactive model. Special objects retain native reads for compatibility, but internal mutation is not tracked; replace whole values through Actions/patches or use plain data. SSR snapshots must be JSON-safe. See [Next.js App Router](./nextjs) for snapshots, root Provider lifetime and client-only getStore usage.
+
+## Explicit instances and cleanup
+
+Existing parameterless accessors remain available for single-root clients. With multiple instances, retain the Pinia at the application boundary and use `getStore(pinia)` in services before and after `await`. A supplied `PiniaProvider pinia={pinia}` reuses that instance; do not also pass Provider plugins or snapshots. Plain accessors do not read React Context, and Actions do not propagate an async instance context automatically.
+
+The current core provides optional `context.onDispose` for plugins. Older hosts and hand-written contexts can omit it. Check the capability before acquiring resources, or retain a separate cleanup owner. The final application owner unmounts consumers before `disposePinia(pinia)`. Disposal is irreversible, does not delete persisted data, and is not automatic on Provider unmount. See [instance lifetime](../core-concepts/outside-component-usage) and [plugin cleanup](../plugins/index).
