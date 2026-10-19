@@ -152,6 +152,8 @@ Select every publishable package affected by the pull request:
 - `@pinia-react/devtools`
 - `@pinia-react/persistedstate`
 
+Peer-dependent packages are bumped automatically only when a dependency release leaves their supported peer range. A core minor release that still satisfies `^3.0.0` does not, by itself, require a plugin major release.
+
 Choose the version impact independently for each selected package:
 
 - `patch`: Backward-compatible bug fixes and small user-visible corrections.

@@ -45,3 +45,35 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+  react-compatibility:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        react: ['18.3.1', '19.2.0']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install isolated React runtime pair
+        env:
+          REACT_VERSION: ${{ matrix.react }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/react-compat"
+          printf '{"private":true,"dependencies":{"react":"%s","react-dom":"%s","@testing-library/react":"16.3.0"}}' "$REACT_VERSION" "$REACT_VERSION" > "$RUNNER_TEMP/react-compat/package.json"
+          pnpm --dir "$RUNNER_TEMP/react-compat" install --ignore-workspace --ignore-scripts --store-dir "$RUNNER_TEMP/react-store"
+      - name: Core runtime, SSR and equivalent React workload
+        run: PINIA_COMPAT_MODULES="$RUNNER_TEMP/react-compat/node_modules" pnpm test:compat
+      - name: Real Chromium hydration
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          PINIA_COMPAT_MODULES="$RUNNER_TEMP/react-compat/node_modules" PINIA_BROWSER_MODULES="$GITHUB_WORKSPACE/node_modules" pnpm test:browser

@@ -14,7 +14,12 @@
     "playground-nextjs": "pnpm --filter playground-nextjs dev",
     "docs-dev": "pnpm --filter docs dev",
     "docs-build": "pnpm --filter docs build",
-    "docs-preview": "pnpm --filter docs preview"
+    "docs-preview": "pnpm --filter docs preview",
+    "test:compat": "vitest run --config vitest.compat.config.ts",
+    "test:browser": "node packages/playground/react/scripts/check-hydration.mjs",
+    "measure:bundles": "node scripts/measure-bundles.mjs",
+    "test:checkout:browser": "node packages/playground/react/scripts/check-checkout.mjs",
+    "benchmark:compare": "node packages/playground/react/scripts/compare-revisions.mjs"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm exec lint-staged",
@@ -43,6 +48,7 @@
     "jsdom": "^26.1.0",
     "lint-staged": "^16.2.1",
     "npm-run-all": "^4.1.5",
+    "playwright": "1.64.1",
     "simple-git-hooks": "^2.13.1",
     "tsup": "^8.5.0",
     "typescript": "^5.8.3",
