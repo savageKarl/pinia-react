@@ -1,5 +1,11 @@
 # @pinia-react/devtools
 
+## 1.0.2
+
+### Patch Changes
+
+- 5f5bcff: Keep committed Store mutations and other listeners isolated from Redux DevTools connection, initialization, subscription, and send failures.
+
 ## 1.0.1
 
 ### Patch Changes
