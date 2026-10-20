@@ -91,6 +91,8 @@ The current store state is initialized when the connection opens. From Redux Dev
 
 State changes initiated by DevTools are not sent back as new mutations, which prevents feedback loops.
 
+The DevTools connection is optional. If the browser extension connection, initialization, subscription, or send operation fails, the integration is disabled and the already-committed Store mutation remains successful. DevTools failures do not interrupt other Mutation listeners.
+
 ## Options
 
 ### Plugin options

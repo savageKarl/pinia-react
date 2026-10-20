@@ -243,6 +243,24 @@ describe('Action commit contracts', () => {
     expect(store.items).toEqual([{ n: 2 }])
   })
 
+  it('rejects Object.defineProperty in Actions instead of silently losing the write', () => {
+    const { getStore } = defineStore('action-define-property', {
+      state: () => ({ count: 0 }),
+      actions: {
+        define() {
+          Object.defineProperty(this, 'count', { value: 3, writable: true, enumerable: true, configurable: true })
+        }
+      }
+    })
+    const store = getStore()
+    const listener = vi.fn()
+    store.$subscribe(listener)
+
+    expect(() => store.define()).toThrow(/Object\.defineProperty.*not supported/i)
+    expect(store.count).toBe(0)
+    expect(listener).not.toHaveBeenCalled()
+  })
+
   it('does not store live mutation proxies when assigning or inserting state references', () => {
     const { getStore } = defineStore('references', {
       state: () => ({ user: { name: 'first' }, other: { name: 'other' }, items: [] as { user: { name: string } }[] }),

@@ -61,4 +61,61 @@ describe('Store Core', () => {
     act(() => result.current.addItem('second'))
     expect(result.current.count).toBe(2)
   })
+
+  it('invalidates a getter that reads nested object keys when fields change', () => {
+    const getter = vi.fn((state: { fields: Record<string, number>; other: number }) => Object.keys(state.fields).length)
+    const { getStore } = defineStore('object-keys-getter', {
+      state: () => ({ fields: { first: 1 } as Record<string, number>, other: 0 }),
+      getters: { fieldCount: getter },
+      actions: {
+        addField() {
+          this.fields.second = 2
+        },
+        removeField() {
+          delete this.fields.second
+        },
+        updateOther() {
+          this.other++
+        }
+      }
+    })
+    const store = getStore()
+
+    expect(store.fieldCount).toBe(1)
+    expect(getter).toHaveBeenCalledOnce()
+    store.updateOther()
+    expect(store.fieldCount).toBe(1)
+    expect(getter).toHaveBeenCalledOnce()
+    store.addField()
+    expect(store.fieldCount).toBe(2)
+    expect(getter).toHaveBeenCalledTimes(2)
+    store.removeField()
+    expect(store.fieldCount).toBe(1)
+    expect(getter).toHaveBeenCalledTimes(3)
+  })
+
+  it('does not warn for a normal local Getter diamond', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const store = defineStore('local-getter-diamond', {
+      state: () => ({ count: 1 }),
+      getters: {
+        base: (state) => state.count,
+        left(): number {
+          return this.base + 1
+        },
+        right(): number {
+          return this.base + 2
+        },
+        sum(): number {
+          return this.left + this.right
+        }
+      }
+    }).getStore()
+
+    expect(store.sum).toBe(5)
+    store.$patch({ count: 2 })
+    expect(store.sum).toBe(7)
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
 })

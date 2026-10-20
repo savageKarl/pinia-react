@@ -10,7 +10,7 @@ export function createPinia(): Pinia {
 
 /** Internal factory: rendering a Provider on the server must not change activePinia. */
 export function createPiniaInstance(): Pinia {
-  const state: Record<string, StateTree> = {}
+  const state = Object.create(null) as Record<string, StateTree>
   const _p: Pinia['_p'] = []
   const _s = new Map<string, StoreGeneric>()
   const _scopes = new Map()
@@ -40,7 +40,7 @@ export function createPiniaInstance(): Pinia {
     _s,
     _scopes,
     _m,
-    _initialStores: {},
+    _initialStores: Object.create(null),
     state
   }
 
