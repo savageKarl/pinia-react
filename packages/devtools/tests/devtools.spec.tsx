@@ -80,6 +80,24 @@ describe('@pinia-react/devtools', () => {
     expect(connection.send).toHaveBeenNthCalledWith(2, { type: '@patch', payload: expect.any(Array) }, { count: 3 })
   })
 
+  test('does not let a failed DevTools send interrupt a committed mutation', () => {
+    const pinia = createPinia().use(devtoolsPlugin({ name: 'Application' }))
+    setActivePinia(pinia)
+    const laterListener = vi.fn()
+    const store = defineStore('later-listener', {
+      state: () => ({ count: 0 }),
+      devtools: { enabled: true }
+    }).getStore(pinia)
+    pinia.onMutation(laterListener)
+    connection.send.mockImplementation(() => {
+      throw new Error('extension closed')
+    })
+
+    act(() => store.$patch({ count: 1 }))
+    expect(store.count).toBe(1)
+    expect(laterListener).toHaveBeenCalledOnce()
+  })
+
   test('restores time-travel state through the core without echoing it back', () => {
     const { useStore } = setup()
     const { result } = renderHook(() => useStore())

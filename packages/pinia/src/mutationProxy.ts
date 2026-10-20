@@ -163,11 +163,13 @@ export function createMutationProxy<S extends StateTree>(
         })
         return true
       },
-      defineProperty(target, key, descriptor) {
+      defineProperty(_target, key, descriptor) {
         getState()
         assertStateKey(key)
         if ('value' in descriptor) assertStateValue(descriptor.value)
-        return Reflect.defineProperty(target, key, descriptor)
+        throw new TypeError(
+          '[pinia-react] Object.defineProperty is not supported in Store Actions. Use assignment or $patch().'
+        )
       },
       has(_target, key) {
         return Reflect.has(atPath(getState(), path), key)

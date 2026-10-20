@@ -28,7 +28,7 @@ export function PiniaProvider({ pinia: supplied, initialStores, plugins, childre
     }
     assertStateValue(initialStores)
     const instance = createPiniaInstance()
-    instance._initialStores = { ...initialStores }
+    Object.assign(instance._initialStores, initialStores)
     plugins?.forEach((plugin) => instance.use(plugin))
     return instance
   })

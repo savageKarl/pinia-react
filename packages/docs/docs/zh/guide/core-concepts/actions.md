@@ -86,6 +86,8 @@ this.$patch({ loading: false, error: null })
 
 状态发生变化时，两种 patch 都只提交一次；没有变化时不产生事件。对象形式浅层替换传入的顶层字段，不深度合并。数组的 push、pop、shift、unshift、splice、sort、reverse、fill 和 copyWithin 方法每次调用也只提交一次。
 
+Action 状态代理支持普通赋值、删除和上述数组变更方法。Action 中不支持 `Object.defineProperty()`，调用时会明确抛错，而不是静默写入临时代理；请改用赋值或 `$patch()`。
+
 ### 异常与回滚
 
 Action 抛错或 Promise 拒绝时，已提交的修改会保留。请用 try/catch/finally 显式处理清理。同步 $patch 回调抛错时，该次草稿修改不会提交。$patch 的 Draft 仅在同步回调期间有效，不能保留到 await 之后。

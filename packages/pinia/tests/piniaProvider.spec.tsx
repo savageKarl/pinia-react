@@ -93,6 +93,30 @@ describe('PiniaProvider', () => {
     expect(hook.result.current.count).toBe(0)
   })
 
+  it('hydrates and updates a Store with the reserved __proto__ ID', () => {
+    const initialStores = JSON.parse('{"__proto__":{"count":7}}')
+    const { useStore } = defineStore('__proto__', {
+      state: () => ({ count: 0 }),
+      actions: {
+        increment() {
+          this.count++
+        }
+      }
+    })
+    const hook = renderHook(() => useStore(), {
+      wrapper: ({ children }) => <PiniaProvider initialStores={initialStores}>{children}</PiniaProvider>
+    })
+    const pinia = getActivePinia()
+
+    expect(hook.result.current.count).toBe(7)
+    expect(Object.hasOwn(pinia.state, '__proto__')).toBe(true)
+    expect(Object.getPrototypeOf(pinia._initialStores)).toBeNull()
+    expect(initialStores.__proto__.count).toBe(7)
+
+    act(() => hook.result.current.increment())
+    expect(hook.result.current.count).toBe(8)
+  })
+
   it('uses defaults for stores absent from the snapshot and replaces complete snapshots', () => {
     const { useStore } = defineStore('partial-container', { state: () => ({ count: 2 }) })
     const view = renderHook(() => useStore(), {

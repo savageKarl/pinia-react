@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { createPinia, defineStore, setActivePinia } from '../src'
+import { createPinia, defineStore, disposePinia, setActivePinia } from '../src'
 
 describe('Store Edge Cases', () => {
   beforeEach(() => {
@@ -98,5 +98,21 @@ describe('Store Edge Cases', () => {
 
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('duplicated-id'))
     expect(second.b).toBe(2)
+  })
+
+  test('keeps special Store IDs enumerable and serializable', () => {
+    const pinia = createPinia()
+    for (const id of ['__proto__', 'constructor', 'prototype']) {
+      defineStore(id, { state: () => ({ count: 1 }) }).getStore(pinia)
+    }
+
+    expect(Object.getPrototypeOf(pinia.state)).toBeNull()
+    expect(Object.keys(pinia.state)).toEqual(expect.arrayContaining(['__proto__', 'constructor', 'prototype']))
+    expect(JSON.parse(JSON.stringify(pinia.state))).toEqual(
+      JSON.parse('{"__proto__":{"count":1},"constructor":{"count":1},"prototype":{"count":1}}')
+    )
+
+    disposePinia(pinia)
+    expect(Object.keys(pinia.state)).toEqual([])
   })
 })

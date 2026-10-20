@@ -91,6 +91,8 @@ defineStore('users', {
 
 由 DevTools 发起的状态变更不会再次作为新变更发送，从而避免反馈循环。
 
+DevTools 连接是可选集成。如果浏览器扩展的连接、初始化、订阅或发送操作失败，插件会停用当前连接，但已经提交的 Store Mutation 仍然成功。DevTools 异常不会中断其他 Mutation listener。
+
 ## 配置项
 
 ### 插件配置

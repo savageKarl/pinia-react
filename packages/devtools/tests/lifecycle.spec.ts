@@ -43,7 +43,7 @@ it.each([true, false])(
   }
 )
 
-it('closes the connection if init throws, retaining the original initialization error', () => {
+it('disables the connection if init throws without blocking Store creation', () => {
   const { connection } = extensionFixture()
   const failure = new Error('extension init')
   connection.init.mockImplementation(() => {
@@ -51,12 +51,72 @@ it('closes the connection if init throws, retaining the original initialization 
   })
   const pinia = createPinia().use(devtoolsPlugin())
   const definition = defineStore('tools', { state: () => ({ count: 0 }), devtools: { enabled: true } })
-  for (let iteration = 0; iteration < 3; iteration++) {
-    expect(() => definition.getStore(pinia)).toThrow(failure)
-    expect(pinia._m.size + pinia._s.size + pinia._scopes.size).toBe(0)
-  }
-  expect(connection.unsubscribe).toHaveBeenCalledTimes(3)
+  expect(() => definition.getStore(pinia)).not.toThrow()
+  expect(definition.getStore(pinia).count).toBe(0)
+  expect(pinia._m.size).toBe(0)
+  expect(connection.unsubscribe).toHaveBeenCalledOnce()
+  disposePinia(pinia)
+  expect(connection.unsubscribe).toHaveBeenCalledOnce()
   expect(connection.subscribe).not.toHaveBeenCalled()
+})
+
+it('disables a failed send, preserves later listeners, and releases the connection once', () => {
+  const { connection, stop } = extensionFixture()
+  const pinia = createPinia().use(devtoolsPlugin())
+  const store = defineStore('tools', { state: () => ({ count: 0 }), devtools: { enabled: true } }).getStore(pinia)
+  const laterListener = vi.fn()
+  pinia.onMutation(laterListener)
+  connection.send.mockImplementation(() => {
+    throw new Error('extension send')
+  })
+
+  expect(() => store.$patch({ count: 1 })).not.toThrow()
+  expect(store.count).toBe(1)
+  expect(laterListener).toHaveBeenCalledOnce()
+
+  store.$patch({ count: 2 })
+  expect(store.count).toBe(2)
+  expect(connection.send).toHaveBeenCalledOnce()
+  expect(laterListener).toHaveBeenCalledTimes(2)
+
+  disposePinia(pinia)
+  expect(stop).toHaveBeenCalledOnce()
+  expect(connection.unsubscribe).toHaveBeenCalledOnce()
+})
+
+it('keeps Store creation and mutations working when the extension connection fails', () => {
+  const { extension } = extensionFixture()
+  extension.connect.mockImplementation(() => {
+    throw new Error('extension connect')
+  })
+  const pinia = createPinia().use(devtoolsPlugin())
+  const definition = defineStore('tools', { state: () => ({ count: 0 }), devtools: { enabled: true } })
+
+  expect(() => definition.getStore(pinia)).not.toThrow()
+  const store = definition.getStore(pinia)
+  expect(() => store.$patch({ count: 1 })).not.toThrow()
+  expect(store.count).toBe(1)
+})
+
+it('disables the integration and releases its connection when subscription fails', () => {
+  const { connection, stop } = extensionFixture()
+  connection.subscribe.mockImplementation(() => {
+    throw new Error('extension subscribe')
+  })
+  const pinia = createPinia().use(devtoolsPlugin())
+  const store = defineStore('tools', { state: () => ({ count: 0 }), devtools: { enabled: true } }).getStore(pinia)
+  const laterListener = vi.fn()
+  pinia.onMutation(laterListener)
+
+  expect(() => store.$patch({ count: 1 })).not.toThrow()
+  expect(store.count).toBe(1)
+  expect(laterListener).toHaveBeenCalledOnce()
+  expect(connection.send).not.toHaveBeenCalled()
+  expect(stop).not.toHaveBeenCalled()
+  expect(connection.unsubscribe).toHaveBeenCalledOnce()
+
+  disposePinia(pinia)
+  expect(connection.unsubscribe).toHaveBeenCalledOnce()
 })
 
 it('continues releasing other resources when subscribe-stop and unsubscribe throw', () => {

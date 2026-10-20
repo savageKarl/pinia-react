@@ -26,7 +26,7 @@ export const { useCounterStore, getCounterStore } = defineStore('counter', {
 | Value or key | Runtime boundary |
 | --- | --- |
 | Plain objects and arrays | Nested ordinary property writes and array mutators inside Actions or function patches use the same immutable commit lifecycle. Public reads, including nested `$state` reads, are read-only. |
-| Dynamic string keys and keys containing dots | Tracked as individual property keys, not dot-separated paths. Add or remove fields through Actions or `$patch()`; use an appropriate dictionary or optional-field type. |
+| Dynamic string keys and keys containing dots | Tracked as individual property keys, not dot-separated paths. Add or remove fields through Actions or `$patch()`; use an appropriate dictionary or optional-field type. Object-key enumeration and own-property checks on nested state are reactive. |
 | Own symbol keys in business state | Unsupported, including nested and non-enumerable keys. Initialization, Actions, patches or plugin restoration that introduce these keys throw before that state transition commits; fields are not silently discarded. |
 | Array indices, `length` and inherited built-ins | Normal array reads and iteration are supported, including `Symbol.iterator`. Inherited built-ins are not user-defined symbol state fields. Custom string or symbol properties on arrays are outside the supported mutation model. |
 | `Date`, `Map`, `Set`, class instances, functions, Promises and browser objects | Remain opaque rather than recursively proxied state. First exposure emits a runtime warning, deduplicated by actual object identity. Native reads remain available for compatibility, but in-place mutation is **not supported** and can bypass read-only guards, patches, Getter invalidation and notifications. Use plain representations or replace the entire value through an Action or `$patch()`. |
@@ -34,6 +34,8 @@ export const { useCounterStore, getCounterStore } = defineStore('counter', {
 The opaque-value warning applies to Store, `$state`, Getter and Action reads, function-patch access and replacement normalization; it does not turn special values into read-only or reactive objects. Reading the same instance again, including on a later render, does not repeat the warning. In a function patch, mutating a `Date` can still change its internal value without an Immer patch or notification; Map/Set draft access is rejected by the default Immer configuration. Plugin restoration preserves its origin and normal commit notifications, but does not add special-object support.
 
 Use string keys for business fields. `StatePath` is `string[]`, and Mutation patches use Immer `Patch[]`. Rejecting business symbol keys does not disable built-in array iteration. A key such as `'user.name'` is a single key, while `['user', 'name']` in a mutation path means two nested fields.
+
+Store IDs are also safe to use with reserved object names such as `__proto__`, `constructor`, and `prototype`; they remain enumerable in `pinia.state` and serialized snapshots.
 
 Do not mutate state through references retained from `state()`, patch payloads or plugin snapshots. The supported mutation boundary is the Store Action proxy or a synchronous `$patch()` draft, not external aliases. Native methods being callable does not imply reactive support for an object's internal slots.
 

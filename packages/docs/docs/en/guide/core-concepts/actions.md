@@ -86,6 +86,8 @@ this.$patch({ loading: false, error: null })
 
 Both patch forms produce one commit when state changes and no event when it does not. Object patches replace the supplied top-level fields without deep merging. The array methods push, pop, shift, unshift, splice, sort, reverse, fill and copyWithin also commit once per call.
 
+Action state proxies support ordinary assignment, deletion and the listed array mutators. `Object.defineProperty()` is not supported in an Action and throws instead of silently writing to a temporary proxy; use assignment or `$patch()`.
+
 ### Errors and rollback
 
 If an Action throws or rejects, already committed changes remain. Handle cleanup explicitly with try/catch/finally. A throwing synchronous $patch recipe commits none of its draft changes. Drafts provided to $patch are valid only inside its synchronous callback; do not retain them across await.

@@ -126,21 +126,25 @@ export function defineStore<
     }
     visited.add(getterName)
 
-    const finalDeps = new Set<StatePath>()
-    const directDeps = getterDepsMap.get(getterName)
+    try {
+      const finalDeps = new Set<StatePath>()
+      const directDeps = getterDepsMap.get(getterName)
 
-    if (!directDeps) return finalDeps
+      if (!directDeps) return finalDeps
 
-    for (const dep of directDeps) {
-      const getterKey = dep.length === 1 && typeof dep[0] === 'string' ? dep[0] : undefined
-      if (getterKey && getterKey in getters) {
-        const nestedDeps = resolveGetterDependencies(getterKey, getterDepsMap, visited)
-        nestedDeps.forEach((d) => finalDeps.add(d))
-      } else {
-        finalDeps.add(dep)
+      for (const dep of directDeps) {
+        const getterKey = dep.length === 1 && typeof dep[0] === 'string' ? dep[0] : undefined
+        if (getterKey && getterKey in getters) {
+          const nestedDeps = resolveGetterDependencies(getterKey, getterDepsMap, visited)
+          nestedDeps.forEach((d) => finalDeps.add(d))
+        } else {
+          finalDeps.add(dep)
+        }
       }
+      return finalDeps
+    } finally {
+      visited.delete(getterName)
     }
-    return finalDeps
   }
 
   function createStoreInstance(pinia: Pinia): Store<Id, S, G, A> {
@@ -416,14 +420,17 @@ export function defineStore<
           },
           has(target, key) {
             assertStoreActive()
+            onDeepAccess?.([...path, String(key)])
             return Reflect.has(target, key)
           },
           ownKeys(target) {
             assertStoreActive()
+            onDeepAccess?.(path)
             return Reflect.ownKeys(target)
           },
           getOwnPropertyDescriptor(target, key) {
             assertStoreActive()
+            onDeepAccess?.([...path, String(key)])
             const descriptor = Reflect.getOwnPropertyDescriptor(target, key)
             if (descriptor && 'value' in descriptor && isPlainObjectOrArray(descriptor.value)) {
               descriptor.value = createReadonlyStateProxy(descriptor.value)

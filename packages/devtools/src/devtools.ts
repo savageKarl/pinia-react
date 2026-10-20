@@ -56,16 +56,72 @@ export function devtoolsPlugin(pluginOptions: DevtoolsPluginOptions = {}): Pinia
     const name = pluginOptions.name
       ? `${pluginOptions.name}: ${options.name ?? context.id}`
       : (options.name ?? context.id)
-    const connection = extension.connect({ name, trace: options.trace })
+    let connection: DevToolsConnection
+    try {
+      connection = extension.connect({ name, trace: options.trace })
+    } catch {
+      try {
+        console.warn('[pinia-react/devtools] Redux DevTools connection failed.')
+      } catch {
+        // Host logging is optional too.
+      }
+      return
+    }
+
     let active = true
+    let stopMutation: (() => void) | undefined
+    let stopMessages: (() => void) | undefined
+    let connectionClosed = false
+    let warned = false
+    const fail = (phase: 'initialize' | 'send' | 'subscribe') => {
+      if (!active) return
+      active = false
+      const mutationStop = stopMutation
+      stopMutation = undefined
+      try {
+        mutationStop?.()
+      } catch {
+        // A failed optional integration must not interrupt business dispatch.
+      }
+      const messageStop = stopMessages
+      stopMessages = undefined
+      try {
+        messageStop?.()
+      } catch {
+        // A failed optional integration must not interrupt business dispatch.
+      }
+      try {
+        closeConnection()
+      } catch {
+        // A failed optional integration must not interrupt business dispatch.
+      }
+      if (warned) return
+      warned = true
+      try {
+        console.warn(`[pinia-react/devtools] Redux DevTools ${phase} failed; integration disabled.`)
+      } catch {
+        // Host logging is optional too.
+      }
+    }
+    const closeConnection = () => {
+      if (connectionClosed) return
+      connectionClosed = true
+      connection.unsubscribe?.()
+    }
     context.onDispose?.(() => {
       active = false
-      connection.unsubscribe?.()
+      closeConnection()
     })
-    connection.init(context.store.$state)
+
+    try {
+      connection.init(context.store.$state)
+    } catch {
+      fail('initialize')
+      return
+    }
     if (!active) return
 
-    const stopMutation = context.pinia.onMutation((event) => {
+    stopMutation = context.pinia.onMutation((event) => {
       if (
         !active ||
         event.store !== context.store ||
@@ -73,32 +129,45 @@ export function devtoolsPlugin(pluginOptions: DevtoolsPluginOptions = {}): Pinia
         event.meta.origin === DEVTOOLS_ORIGIN
       )
         return
-      connection.send(actionFor(event), event.state)
+      try {
+        connection.send(actionFor(event), event.state)
+      } catch {
+        fail('send')
+      }
     })
-
     context.onDispose?.(() => {
       active = false
-      stopMutation()
+      stopMutation?.()
     })
 
-    const stopMessages = connection.subscribe((message) => {
-      if (!active || context.pinia._s.get(context.id) !== context.store || message?.type !== 'DISPATCH') return
+    try {
+      const unsubscribeMessages = connection.subscribe((message) => {
+        if (!active || context.pinia._s.get(context.id) !== context.store || message?.type !== 'DISPATCH') return
 
-      const type = message.payload?.type
-      if (type === 'COMMIT') {
-        connection.init(context.store.$state)
-        return
-      }
-      if (type === 'RESET') {
-        context.restoreState(context.options.state(), { type: 'reset', origin: DEVTOOLS_ORIGIN })
-        return
-      }
-      if (!['JUMP_TO_STATE', 'JUMP_TO_ACTION', 'ROLLBACK', 'IMPORT_STATE'].includes(type)) return
+        const type = message.payload?.type
+        if (type === 'COMMIT') {
+          try {
+            connection.init(context.store.$state)
+          } catch {
+            fail('initialize')
+          }
+          return
+        }
+        if (type === 'RESET') {
+          context.restoreState(context.options.state(), { type: 'reset', origin: DEVTOOLS_ORIGIN })
+          return
+        }
+        if (!['JUMP_TO_STATE', 'JUMP_TO_ACTION', 'ROLLBACK', 'IMPORT_STATE'].includes(type)) return
 
-      const state = readState(message)
-      if (!state || typeof state !== 'object') return
-      context.restoreState(state as typeof context.store.$state, { origin: DEVTOOLS_ORIGIN })
-    })
+        const state = readState(message)
+        if (!state || typeof state !== 'object') return
+        context.restoreState(state as typeof context.store.$state, { origin: DEVTOOLS_ORIGIN })
+      })
+      stopMessages = typeof unsubscribeMessages === 'function' ? unsubscribeMessages : undefined
+    } catch {
+      fail('subscribe')
+      return
+    }
     if (typeof stopMessages === 'function') {
       if (!active) {
         stopMessages()
@@ -106,7 +175,7 @@ export function devtoolsPlugin(pluginOptions: DevtoolsPluginOptions = {}): Pinia
       }
       context.onDispose?.(() => {
         active = false
-        stopMessages()
+        stopMessages?.()
       })
     }
   }

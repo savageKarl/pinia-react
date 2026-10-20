@@ -77,6 +77,51 @@ it('tracks dynamic and dotted keys without notifying readers of other keys', () 
   expect(renderCount).toHaveBeenCalledTimes(2)
 })
 
+it('tracks nested object structure and own-property checks', () => {
+  const { useStore, getStore } = defineStore('tracking-object-structure', {
+    state: () => ({ fields: { first: 1 } as Record<string, number>, other: 0 }),
+    actions: {
+      addField() {
+        this.fields.second = 2
+      },
+      removeField() {
+        delete this.fields.second
+      },
+      updateOther() {
+        this.other++
+      }
+    }
+  })
+  const renderCount = vi.fn()
+  function View() {
+    const store = useStore()
+    const iteratedFields: string[] = []
+    for (const key in store.fields) iteratedFields.push(key)
+    renderCount()
+    return (
+      <p>
+        {Object.keys(store.fields).join(',')}:{Object.hasOwn(store.fields, 'second') ? 'yes' : 'no'}:
+        {iteratedFields.join(',')}
+      </p>
+    )
+  }
+
+  render(<View />)
+  expect(screen.getByText('first:no:first')).toBeInTheDocument()
+  renderCount.mockClear()
+
+  act(() => getStore().updateOther())
+  expect(renderCount).not.toHaveBeenCalled()
+
+  act(() => getStore().addField())
+  expect(screen.getByText('first,second:yes:first,second')).toBeInTheDocument()
+  expect(renderCount).toHaveBeenCalledOnce()
+
+  act(() => getStore().removeField())
+  expect(screen.getByText('first:no:first')).toBeInTheDocument()
+  expect(renderCount).toHaveBeenCalledTimes(2)
+})
+
 it('treats a $state read as a dependency on every state mutation', () => {
   const { useStore, getStore } = defineStore('tracking-state', {
     state: () => ({ count: 0, unused: 0 }),
