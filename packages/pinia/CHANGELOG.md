@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.1.1
+
+### Patch Changes
+
+- 5f5bcff: Track nested object structure reads, preserve reserved Store IDs in state snapshots, reject unsupported Action property definitions explicitly, and avoid false circular Getter warnings for shared dependencies.
+
 ## 3.1.0
 
 ### Minor Changes
